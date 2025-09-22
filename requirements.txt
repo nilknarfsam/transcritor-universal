@@ -1,0 +1,8 @@
+tkinterdnd2
+customtkinter
+openai-whisper
+pdfplumber
+python-docx
+openpyxl
+pillow
+pytesseract
