@@ -138,5 +138,9 @@ class SettingsPanel(ctk.CTkFrame):
             self.history_box.insert("1.0", "Nenhuma transcrição recente.")
         else:
             for item in reversed(history):
-                self.history_box.insert("end", f"- {item['arquivo']} ({item['tipo']})\n")
+                status = item.get("status", "concluído")
+                line = f"- {item['arquivo']} ({item['tipo']}) [{status}]"
+                if item.get("mensagem"):
+                    line += f" — {item['mensagem'][:60]}"
+                self.history_box.insert("end", line + "\n")
         self.history_box.configure(state="disabled")

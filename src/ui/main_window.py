@@ -7,7 +7,8 @@ import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from src.core.file_utils import FILE_DIALOG_TYPES, parse_dropped_paths
-from src.core.queue_manager import QueueManager
+from src.core.log_service import setup_logging
+from src.core.queue_manager import QueueManager, QueueStats
 from src.core.settings_service import SettingsService
 from src.core.transcription_service import TranscriptionService
 from src.models.transcription_job import JobStatus, TranscriptionJob
@@ -18,6 +19,7 @@ from src.ui.settings_panel import SettingsPanel
 
 class MainWindow:
     def __init__(self) -> None:
+        setup_logging()
         try:
             TranscriptionService().ensure_whisper()
         except RuntimeError as exc:
@@ -31,7 +33,7 @@ class MainWindow:
         ctk.set_appearance_mode(self.settings.theme)
 
         self.root = TkinterDnD.Tk()
-        self.root.title("Transcritor Universal 2.0")
+        self.root.title("Transcritor Universal 2.1")
         self.root.geometry("1100x720")
         self.root.minsize(900, 600)
 
@@ -40,6 +42,7 @@ class MainWindow:
             on_job_updated=self._on_job_updated_threadsafe,
             on_queue_idle=self._on_queue_idle_threadsafe,
             on_status_message=self._on_status_threadsafe,
+            on_progress=self._on_progress_threadsafe,
         )
 
         self._build_layout()
@@ -79,6 +82,7 @@ class MainWindow:
         )
         self.queue_panel.grid(row=1, column=0, sticky="nsew")
         self.queue_panel.set_add_files_handler(self.add_files_dialog)
+        self.queue_panel.set_status_handler(self._set_status)
 
         self.result_panel = ResultPanel(self.root, on_status=self._set_status)
         self.result_panel.grid(row=1, column=1, sticky="nsew", padx=(6, 12), pady=(0, 12))
@@ -148,28 +152,30 @@ class MainWindow:
         self._set_status(f"Tema alterado para {theme}")
 
     def _on_job_updated_threadsafe(self, job: TranscriptionJob) -> None:
-        self.root.after(0, lambda: self._on_job_updated(job))
+        self.root.after(0, lambda j=job: self._on_job_updated(j))
 
     def _on_queue_idle_threadsafe(self) -> None:
         self.root.after(0, self._on_queue_idle)
 
     def _on_status_threadsafe(self, message: str) -> None:
-        self.root.after(0, lambda: self._set_status(message))
+        self.root.after(0, lambda m=message: self._set_status(m))
+
+    def _on_progress_threadsafe(self, value: float, stats: QueueStats) -> None:
+        self.root.after(0, lambda v=value, s=stats: self.queue_panel.update_progress(v, s))
 
     def _on_job_updated(self, job: TranscriptionJob) -> None:
         self.queue_panel.update_job(job)
         selected = self.queue_manager.selected_job
         if selected and selected.id == job.id:
             self.result_panel.show_job(job)
-        if job.status.value == "processando":
-            self.result_panel.show_progress(True, 0.3)
-        elif job.status.value in ("concluído", "erro"):
-            self.result_panel.show_progress(False)
-            if job.status.value == "concluído":
-                self.settings_panel.refresh_history()
+        if job.status == JobStatus.COMPLETED:
+            self.settings_panel.refresh_history()
 
     def _on_queue_idle(self) -> None:
-        self.result_panel.show_progress(False)
+        self.queue_panel.update_progress(
+            self.queue_manager.get_overall_progress(),
+            self.queue_manager.stats,
+        )
         self.settings_panel.refresh_history()
 
     def _set_status(self, message: str) -> None:
