@@ -1,4 +1,4 @@
-# Transcritor Universal 2.0 – Áudio / Vídeo / Texto
+# Transcritor Universal 2.1 – Áudio / Vídeo / Texto
 
 GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **extrair texto de PDFs, DOCX e XLSX**, e **fazer OCR em imagens** (Tesseract). Suporta **fila de transcrições**, **drag & drop**, histórico e exportação em **TXT, JSON e Markdown**.
 
@@ -11,12 +11,14 @@ GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **
 * **Transcrição (Whisper):** MP3, WAV, M4A, FLAC, MP4, AVI, MOV, MKV
 * **Textos:** TXT, PDF, DOCX, XLSX
 * **OCR em imagens:** JPG, JPEG, PNG (via Tesseract)
-* **Fila:** vários arquivos com status (aguardando, processando, concluído, erro)
-* **Saída automática:** mesma pasta do arquivo ou pasta global configurável
+* **Fila:** vários arquivos com status (aguardando, processando, concluído, erro, cancelado)
+* **Controles:** iniciar/cancelar fila, barra de progresso geral, contadores por status
+* **Saída automática:** mesma pasta do arquivo ou pasta global; botão **Abrir pasta de saída**
 * **Idiomas:** detecção automática ou seleção manual (pt, en, es, fr, de, it, ru, zh)
-* **UX:** arrastar & soltar, painéis de configuração/fila/resultado, tema escuro/claro
+* **UX:** arrastar & soltar, preview inteligente para textos grandes, tema escuro/claro
 * **Exportação:** TXT, JSON, Markdown (automática e manual)
-* **Histórico:** últimas transcrições em `data/historico_transcricoes.json`
+* **Histórico:** transcrições e sessões parciais em `data/historico_transcricoes.json`
+* **Log técnico:** `data/logs/app.log` (erros e eventos da fila)
 
 ---
 
@@ -31,6 +33,8 @@ src/
     export_service.py
     queue_manager.py
     settings_service.py
+    log_service.py
+    job_errors.py
   models/
     transcription_job.py
   ui/
@@ -41,6 +45,7 @@ src/
 data/
   settings.json
   historico_transcricoes.json
+  logs/app.log
 ```
 
 ---
@@ -96,9 +101,12 @@ python app_transcricao.py
 1. Abra o app e ajuste **tema**, **idioma** e **formato padrão** no painel esquerdo.
 2. **Adicione arquivos** (botão ou drag & drop) — entram na fila.
 3. Opcional: defina uma **pasta global de saída** ou deixe na mesma pasta do arquivo.
-4. Clique em **Iniciar Fila** para processar todos os itens aguardando.
-5. Selecione um item na fila para ver o resultado e exportar manualmente se quiser.
-6. Consulte o histórico no painel de configurações.
+4. Clique em **Iniciar Fila** para processar todos os itens aguardando (não é possível iniciar duas vezes).
+5. Use **Cancelar Fila** para interromper após o item atual; o progresso parcial fica no histórico.
+6. Acompanhe **contadores** e a **barra de progresso** acima da lista.
+7. Selecione um item para ver o resultado (preview truncado em textos grandes; use **Carregar texto completo**).
+8. **Abrir pasta de saída** abre o Explorer na pasta do item selecionado ou na pasta global.
+9. Consulte o histórico no painel de configurações; detalhes técnicos em `data/logs/app.log`.
 
 ---
 

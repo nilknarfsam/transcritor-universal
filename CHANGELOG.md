@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.1.0] - 2026-05-28
+
+### Added
+
+- Botões **Cancelar Fila** e **Abrir pasta de saída**.
+- Barra de progresso geral e contadores (total, aguardando, processando, concluídos, erros).
+- Preview truncado para arquivos grandes com opção **Carregar texto completo**.
+- Log técnico rotativo em `data/logs/app.log`.
+- Classificação de erros por item (`error_code` + mensagem amigável).
+- Status `cancelado` para itens não processados após cancelamento.
+- Histórico com status (`concluído`, `erro`, `parcial`) e mensagens resumidas.
+
+### Fixed
+
+- Bloqueio de início duplicado da fila enquanto já processa.
+- Remoção de item selecionado permitida quando não está em processamento.
+- Registro de progresso parcial no histórico ao cancelar a fila.
+
+### Changed
+
+- Histórico exibe status e mensagem resumida no painel lateral.
+
 ## [2.0.0] - 2026-05-28
 
 ### Added
