@@ -1,70 +1,89 @@
-# Transcritor Universal – Áudio / Vídeo / Texto
+# Transcritor Universal 2.0 – Áudio / Vídeo / Texto
 
-Uma GUI simples e moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **extrair texto de PDFs, DOCX e XLSX**, e **fazer OCR em imagens** (Tesseract). Suporta **drag & drop**, histórico de transcrições e exportação em **TXT, JSON e Markdown**.
+GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **extrair texto de PDFs, DOCX e XLSX**, e **fazer OCR em imagens** (Tesseract). Suporta **fila de transcrições**, **drag & drop**, histórico e exportação em **TXT, JSON e Markdown**.
 
-> Arquivo principal: `app_transcricao.py`
+> Ponto de entrada: `app.py`
 
 ---
 
-## ✨ Recursos
+## Recursos
 
 * **Transcrição (Whisper):** MP3, WAV, M4A, FLAC, MP4, AVI, MOV, MKV
 * **Textos:** TXT, PDF, DOCX, XLSX
 * **OCR em imagens:** JPG, JPEG, PNG (via Tesseract)
+* **Fila:** vários arquivos com status (aguardando, processando, concluído, erro)
+* **Saída automática:** mesma pasta do arquivo ou pasta global configurável
 * **Idiomas:** detecção automática ou seleção manual (pt, en, es, fr, de, it, ru, zh)
-* **UX:** arrastar & soltar, barra de progresso, mensagens de status
-* **Exportação:** TXT, JSON, Markdown
-* **Histórico:** lista as últimas transcrições
+* **UX:** arrastar & soltar, painéis de configuração/fila/resultado, tema escuro/claro
+* **Exportação:** TXT, JSON, Markdown (automática e manual)
+* **Histórico:** últimas transcrições em `data/historico_transcricoes.json`
 
 ---
 
-## 🧰 Requisitos (Windows)
+## Estrutura do projeto
+
+```
+app.py
+src/
+  core/
+    transcription_service.py   # Whisper (singleton)
+    extraction_service.py      # TXT, PDF, DOCX, XLSX, OCR
+    export_service.py
+    queue_manager.py
+    settings_service.py
+  models/
+    transcription_job.py
+  ui/
+    main_window.py
+    queue_panel.py
+    settings_panel.py
+    result_panel.py
+data/
+  settings.json
+  historico_transcricoes.json
+```
+
+---
+
+## Requisitos (Windows)
 
 ### 1) Python 3.10+
 
 * Baixe e instale o Python (marque **“Add Python to PATH”**).
-* Link: [https://www.python.org/downloads/](https://www.python.org/downloads/)
+* [https://www.python.org/downloads/](https://www.python.org/downloads/)
 
 ### 2) FFmpeg (para Whisper)
 
-* Faça o download dos binários para Windows e **adicione o diretório `bin` ao PATH**.
-* Página oficial: [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
-* Builds recomendadas para Windows (Gyan): [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
+* Adicione o diretório `bin` do FFmpeg ao PATH.
+* [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+* Builds Windows: [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
 
-### 3) Tesseract OCR (para OCR em imagens)
+### 3) Tesseract OCR (para imagens)
 
-* Instale o **Tesseract** para Windows (**inclua os idiomas** desejados, ex.: *Portuguese*).
-* Documentação (downloads): [https://tesseract-ocr.github.io/tessdoc/Downloads.html](https://tesseract-ocr.github.io/tessdoc/Downloads.html)
-* Instalador Windows (UB Mannheim): [https://github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
+* Instale com os idiomas desejados (ex.: Portuguese).
+* [https://github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
 
-> Após instalar, adicione `C:\Program Files\Tesseract-OCR\` ao PATH.
+> Ex.: adicione `C:\Program Files\Tesseract-OCR\` ao PATH.
 
 ### 4) Dependências Python
-
-Crie um *virtualenv* (opcional) e instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Conteúdo recomendado do `requirements.txt`:
-
-```txt
-tkinterdnd2
-customtkinter
-openai-whisper
-pdfplumber
-python-docx
-openpyxl
-pillow
-pytesseract
-```
+Ou execute `instalar_dependencias.bat`.
 
 ---
 
-## 🚀 Como executar
+## Como executar
 
 Na pasta do projeto:
+
+```bash
+python app.py
+```
+
+Compatível com o comando anterior:
 
 ```bash
 python app_transcricao.py
@@ -72,27 +91,27 @@ python app_transcricao.py
 
 ---
 
-## 🖱️ Como usar
+## Como usar
 
-1. Abra o app e escolha um **tema** (System/Light/Dark).
-2. Arraste e solte um arquivo *ou* clique em **“Escolher arquivo”**.
-3. Se quiser, selecione o **idioma** (ou deixe em **auto**).
-4. Clique em **“Iniciar Transcrição”**.
-5. Exporte em TXT, JSON ou Markdown.
-6. Veja suas últimas transcrições no histórico.
+1. Abra o app e ajuste **tema**, **idioma** e **formato padrão** no painel esquerdo.
+2. **Adicione arquivos** (botão ou drag & drop) — entram na fila.
+3. Opcional: defina uma **pasta global de saída** ou deixe na mesma pasta do arquivo.
+4. Clique em **Iniciar Fila** para processar todos os itens aguardando.
+5. Selecione um item na fila para ver o resultado e exportar manualmente se quiser.
+6. Consulte o histórico no painel de configurações.
 
 ---
 
-## ⌨️ Atalhos
+## Atalhos
 
-* **Ctrl + O** → Abrir arquivo
-* **Ctrl + T** → Iniciar transcrição
-* **Ctrl + E** → Exportar
+* **Ctrl + O** → Adicionar arquivos
+* **Ctrl + T** → Iniciar fila
+* **Ctrl + E** → Exportar (diálogo de formato)
 * **Ctrl + Q** → Fechar app
 
 ---
 
-## 📁 Formatos suportados
+## Formatos suportados
 
 * **Áudio:** `.mp3`, `.wav`, `.m4a`, `.flac`
 * **Vídeo:** `.mp4`, `.avi`, `.mov`, `.mkv`
@@ -101,29 +120,21 @@ python app_transcricao.py
 
 ---
 
-## 🛠️ Configuração PATH no Windows
+## Configuração PATH no Windows
 
 ### FFmpeg
 
-1. Extraia o ZIP (ex.: `C:\ffmpeg\`).
-2. Adicione `C:\ffmpeg\bin` ao PATH.
-3. Teste:
-
-   ```bash
-   ffmpeg -version
-   ```
+```bash
+ffmpeg -version
+```
 
 ### Tesseract
 
-1. Instale (ex.: `C:\Program Files\Tesseract-OCR\`).
-2. Adicione ao PATH.
-3. Teste:
+```bash
+tesseract --version
+```
 
-   ```bash
-   tesseract --version
-   ```
-
-Se necessário, configure no código:
+Se necessário:
 
 ```python
 import pytesseract
@@ -132,9 +143,15 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 
 ---
 
-## ❗ Problemas comuns
+## Problemas comuns
 
 * **Whisper não instalado** → `pip install -r requirements.txt`
 * **ffmpeg not found** → FFmpeg não está no PATH
 * **tesseract not installed** → Tesseract não está no PATH
-* **PDF sem texto** → PDF é imagem, use OCR
+* **PDF sem texto** → PDF é imagem; use OCR em imagem exportada ou ferramenta dedicada
+
+---
+
+## Changelog
+
+Veja [CHANGELOG.md](CHANGELOG.md).
