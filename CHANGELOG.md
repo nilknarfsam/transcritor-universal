@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.3.0] - 2026-05-28
+
+### Added
+
+- **Pipeline NotebookLM-ready:** RAW → CLEAN → AI_READY → NOTEBOOKLM.
+- **Metadata YAML** padronizada em `src/ai_ready/metadata/`.
+- **Templates semânticos:** generic, sermon, podcast, course.
+- **Markdown formatter** determinístico (normalize, beautify, semantic paragraphs).
+- **Chunking foundation** para RAG futuro (tamanho, headers, timestamps, semântico).
+- **Modos de exportação:** raw, clean, ai_ready, notebooklm (UI + `settings.json`).
+- **Histórico enriquecido:** export_mode, template_usado, pipeline_stage, tipo_documento.
+
+### Changed
+
+- `ExportService` integrado ao pipeline AI-ready mantendo compatibilidade com modo raw.
+- Exportação manual (Ctrl+E) respeita modo e template configurados.
+
+## [2.2.0] - 2026-05-28
+
+### Added
+
+- **Rebrand oficial:** Transcritor Universal → **CortexFlow**.
+- **Design System** em `src/ui/design/` (`colors`, `fonts`, `spacing`, `theme_manager`).
+- **Fundação AI-ready** em `src/ai_ready/` (estágios raw → clean → ai_ready).
+- Header premium com tagline e badge de versão.
+- Cards visuais na fila de processamento com destaque por status.
+- Sidebar com identidade de marca e tokens de cor consistentes.
+
+### Changed
+
+- Título da janela e cabeçalhos atualizados para CortexFlow v2.2.
+- Painel de fila renomeado para "Pipeline de processamento".
+- Logger técnico renomeado para `cortexflow`.
+- README reescrito com posicionamento de plataforma de conhecimento para IA.
+
 ## [2.1.0] - 2026-05-28
 
 ### Added

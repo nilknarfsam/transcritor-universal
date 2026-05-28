@@ -1,6 +1,8 @@
-# Transcritor Universal 2.1 – Áudio / Vídeo / Texto
+# CortexFlow
 
-GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **extrair texto de PDFs, DOCX e XLSX**, e **fazer OCR em imagens** (Tesseract). Suporta **fila de transcrições**, **drag & drop**, histórico e exportação em **TXT, JSON e Markdown**.
+**Plataforma de preparação inteligente de conhecimento para IA.**
+
+Transforme conteúdos brutos (áudio, vídeo, documentos, OCR) em Markdown e formatos AI-ready para NotebookLM, GPT Projects, RAG, Obsidian e agentes IA.
 
 > Ponto de entrada: `app.py`
 
@@ -19,6 +21,10 @@ GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **
 * **Exportação:** TXT, JSON, Markdown (automática e manual)
 * **Histórico:** transcrições e sessões parciais em `data/historico_transcricoes.json`
 * **Log técnico:** `data/logs/app.log` (erros e eventos da fila)
+* **Design System:** tokens visuais premium em `src/ui/design/`
+* **Exportação AI-ready:** modos Raw, Clean, AI Ready e NotebookLM
+* **Templates semânticos:** genérico, sermão, podcast, aula
+* **Histórico enriquecido:** export_mode, template, pipeline_stage
 
 ---
 
@@ -27,6 +33,14 @@ GUI moderna (CustomTkinter) para **transcrever áudio e vídeo com Whisper**, **
 ```
 app.py
 src/
+  ai_ready/                    # Pipeline AI-ready
+    metadata/                  # YAML frontmatter
+    templates/                 # Sermão, podcast, aula, genérico
+    formatters/                # Markdown beautifier
+    chunking/                  # Fundação RAG
+    exporters/                 # NotebookLM exporter
+    pipeline.py
+    stages.py
   core/
     transcription_service.py   # Whisper (singleton)
     extraction_service.py      # TXT, PDF, DOCX, XLSX, OCR
@@ -38,6 +52,11 @@ src/
   models/
     transcription_job.py
   ui/
+    design/                    # Design System CortexFlow
+      colors.py
+      fonts.py
+      spacing.py
+      theme_manager.py
     main_window.py
     queue_panel.py
     settings_panel.py
@@ -88,7 +107,7 @@ Na pasta do projeto:
 python app.py
 ```
 
-Compatível com o comando anterior:
+Compatível com o comando legado:
 
 ```bash
 python app_transcricao.py
@@ -99,9 +118,9 @@ python app_transcricao.py
 ## Como usar
 
 1. Abra o app e ajuste **tema**, **idioma** e **formato padrão** no painel esquerdo.
-2. **Adicione arquivos** (botão ou drag & drop) — entram na fila.
+2. **Adicione arquivos** (botão ou drag & drop) — entram na fila de processamento.
 3. Opcional: defina uma **pasta global de saída** ou deixe na mesma pasta do arquivo.
-4. Clique em **Iniciar Fila** para processar todos os itens aguardando (não é possível iniciar duas vezes).
+4. Clique em **Iniciar Fila** para processar todos os itens aguardando.
 5. Use **Cancelar Fila** para interromper após o item atual; o progresso parcial fica no histórico.
 6. Acompanhe **contadores** e a **barra de progresso** acima da lista.
 7. Selecione um item para ver o resultado (preview truncado em textos grandes; use **Carregar texto completo**).
@@ -157,6 +176,68 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 * **ffmpeg not found** → FFmpeg não está no PATH
 * **tesseract not installed** → Tesseract não está no PATH
 * **PDF sem texto** → PDF é imagem; use OCR em imagem exportada ou ferramenta dedicada
+
+---
+
+## Using CortexFlow with NotebookLM
+
+O CortexFlow transforma conteúdo bruto em **conhecimento estruturado** pronto para importar no [NotebookLM](https://notebooklm.google.com), GPT Projects, RAG e Obsidian.
+
+### Pipeline de exportação
+
+```
+RAW → CLEAN → AI_READY → NOTEBOOKLM
+```
+
+| Modo | Descrição |
+|------|-----------|
+| **Raw** | Texto original (comportamento legado) |
+| **Clean** | Texto normalizado e embelezado |
+| **AI Ready** | Markdown com seções semânticas (resumo, pontos, frases, referências) |
+| **NotebookLM** | YAML metadata + markdown estruturado otimizado para IA |
+
+Configure **Modo de exportação** e **Tipo de conteúdo** no painel esquerdo. A escolha é salva em `data/settings.json`.
+
+### Estrutura YAML (frontmatter)
+
+Documentos no modo NotebookLM incluem metadata opcional:
+
+```yaml
+---
+title: Nome do arquivo
+source: /caminho/origem.mp3
+language: pt
+content_type: sermon
+pipeline_stage: notebooklm
+topics:
+  - fé
+tags:
+  - evangelho
+---
+```
+
+Campos ausentes são omitidos automaticamente.
+
+### Templates disponíveis
+
+* **generic** — Resumo, Conteúdo, Pontos, Frases, Referências, Tags
+* **sermon** — Estrutura da Mensagem, Contexto Bíblico, Aplicações, Referências Bíblicas
+* **podcast** — Timestamps, Pontos principais
+* **course** — Exercícios e reflexões para aulas
+
+### Dica de uso
+
+1. Selecione modo **NotebookLM** e formato **md**.
+2. Escolha o template adequado (ex.: `sermon` para pregações).
+3. Processe a fila e importe o `.md` gerado no NotebookLM.
+
+Todo o processamento é **local e determinístico** — sem APIs externas.
+
+---
+
+## Posicionamento
+
+CortexFlow não é apenas um transcritor. É uma **plataforma de ingestão, estruturação e preparação de conhecimento para IA**.
 
 ---
 
