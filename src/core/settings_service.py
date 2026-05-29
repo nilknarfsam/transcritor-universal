@@ -29,7 +29,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "library_category": "",
     "library_tags": "",
     "knowledge_type": "document",
-    "ui_last_tab": "Pipeline",
+    "ui_last_tab": "Transcrição",
     "ui_last_search_query": "",
     "ui_search_filter_workspace": "(todos)",
     "ui_search_filter_collection": "(todas)",

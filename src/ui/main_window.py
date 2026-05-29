@@ -12,7 +12,7 @@ from src.core.queue_manager import QueueManager, QueueStats
 from src.core.settings_service import SettingsService
 from src.core.transcription_service import TranscriptionService
 from src.models.transcription_job import JobStatus, TranscriptionJob
-from src.ui.design.fonts import APP_NAME, APP_TAGLINE, APP_VERSION, badge, brand_subtitle, brand_title
+from src.ui.design.fonts import APP_NAME, APP_VERSION, brand_subtitle
 from src.ui.design.spacing import Layout
 from src.ui.design.theme_manager import ThemeManager
 from src.ui.graph_panel import GraphPanel
@@ -22,7 +22,21 @@ from src.ui.dataset_panel import DatasetPanel
 from src.ui.study_panel import StudyPanel
 from src.ui.queue_panel import QueuePanel
 from src.ui.result_panel import ResultPanel
-from src.ui.settings_panel import SettingsPanel
+from src.ui.settings_panel import AppSettingsPanel, BrandSidebar
+
+_MAIN_TABS = (
+    "Transcrição",
+    "Configurações",
+    "Conhecimento",
+    "Biblioteca",
+    "Grafo / Conexões",
+    "Estudo",
+    "Datasets",
+)
+
+_LEGACY_TAB_ALIASES = {
+    "Pipeline": "Transcrição",
+}
 
 
 class MainWindow:
@@ -67,25 +81,20 @@ class MainWindow:
 
     def _build_layout(self) -> None:
         self.root.grid_columnconfigure(1, weight=1)
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_rowconfigure(2, weight=0)
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=0)
 
-        self.settings_panel = SettingsPanel(
+        self.sidebar = BrandSidebar(
             self.root,
-            self.settings,
             self.theme,
-            on_theme_change=self._on_theme_change,
-            on_settings_change=self._on_settings_change,
             width=Layout.SIDEBAR_WIDTH,
         )
-        self.settings_panel.grid(
-            row=0, column=0, rowspan=3, sticky="nsew", padx=(Layout.LG, Layout.SM), pady=Layout.LG
+        self.sidebar.grid(
+            row=0, column=0, rowspan=2, sticky="nsew", padx=(Layout.LG, Layout.SM), pady=Layout.LG
         )
 
-        self._build_header()
-
         center = ctk.CTkFrame(self.root, fg_color="transparent")
-        center.grid(row=1, column=1, sticky="nsew", padx=(Layout.SM, Layout.LG), pady=(0, Layout.SM))
+        center.grid(row=0, column=1, sticky="nsew", padx=(Layout.SM, Layout.LG), pady=(Layout.LG, Layout.SM))
         center.grid_columnconfigure(0, weight=1)
         center.grid_rowconfigure(0, weight=1)
         center.grid_rowconfigure(1, weight=0)
@@ -101,19 +110,15 @@ class MainWindow:
 
         self.main_tabs = ctk.CTkTabview(center, fg_color="transparent")
         self.main_tabs.grid(row=0, column=0, sticky="nsew")
-        self.main_tabs.add("Pipeline")
-        self.main_tabs.add("Conhecimento")
-        self.main_tabs.add("Biblioteca")
-        self.main_tabs.add("Grafo / Conexões")
-        self.main_tabs.add("Estudo")
-        self.main_tabs.add("Datasets")
+        for name in _MAIN_TABS:
+            self.main_tabs.add(name)
 
-        pipeline_tab = self.main_tabs.tab("Pipeline")
-        pipeline_tab.grid_columnconfigure(0, weight=1)
-        pipeline_tab.grid_rowconfigure(0, weight=1)
+        transcription_tab = self.main_tabs.tab("Transcrição")
+        transcription_tab.grid_columnconfigure(0, weight=1)
+        transcription_tab.grid_rowconfigure(0, weight=1)
 
         self.queue_panel = QueuePanel(
-            pipeline_tab,
+            transcription_tab,
             self.queue_manager,
             self.theme,
             on_selection_change=self._on_job_selected,
@@ -121,6 +126,19 @@ class MainWindow:
         self.queue_panel.grid(row=0, column=0, sticky="nsew")
         self.queue_panel.set_add_files_handler(self.add_files_dialog)
         self.queue_panel.set_status_handler(self._set_status)
+
+        settings_tab = self.main_tabs.tab("Configurações")
+        settings_tab.grid_columnconfigure(0, weight=1)
+        settings_tab.grid_rowconfigure(0, weight=1)
+
+        self.settings_panel = AppSettingsPanel(
+            settings_tab,
+            self.settings,
+            self.theme,
+            on_theme_change=self._on_theme_change,
+            on_settings_change=self._on_settings_change,
+        )
+        self.settings_panel.grid(row=0, column=0, sticky="nsew")
 
         knowledge_tab = self.main_tabs.tab("Conhecimento")
         knowledge_tab.grid_columnconfigure(0, weight=1)
@@ -186,53 +204,10 @@ class MainWindow:
 
         self.result_panel = ResultPanel(self.root, self.theme, self.settings, on_status=self._set_status)
         self.result_panel.grid(
-            row=2, column=1, sticky="nsew", padx=(Layout.SM, Layout.LG), pady=(0, Layout.LG)
+            row=1, column=1, sticky="nsew", padx=(Layout.SM, Layout.LG), pady=(0, Layout.LG)
         )
 
         self._set_status(self._last_status_message)
-
-    def _build_header(self) -> None:
-        colors = self.theme.colors()
-        header = ctk.CTkFrame(
-            self.root,
-            fg_color=colors["header_bg"],
-            border_color=colors["border"],
-            border_width=1,
-            corner_radius=Layout.CORNER_RADIUS,
-            height=Layout.HEADER_HEIGHT,
-        )
-        header.grid(row=0, column=1, sticky="ew", padx=(Layout.SM, Layout.LG), pady=(Layout.LG, Layout.SM))
-        header.grid_propagate(False)
-        header.grid_columnconfigure(0, weight=1)
-
-        title_row = ctk.CTkFrame(header, fg_color="transparent")
-        title_row.pack(fill="x", padx=Layout.LG, pady=(Layout.MD, 0))
-
-        ctk.CTkLabel(
-            title_row,
-            text=APP_NAME.upper(),
-            font=brand_title(),
-            text_color=colors["text_primary"],
-        ).pack(side="left")
-
-        ctk.CTkLabel(
-            title_row,
-            text=f"v{APP_VERSION}",
-            font=badge(),
-            text_color=colors["text_muted"],
-            fg_color=colors["surface"],
-            corner_radius=6,
-            padx=8,
-            pady=2,
-        ).pack(side="left", padx=(Layout.SM, 0))
-
-        ctk.CTkLabel(
-            header,
-            text=APP_TAGLINE,
-            font=brand_subtitle(),
-            text_color=colors["text_secondary"],
-            anchor="w",
-        ).pack(fill="x", padx=Layout.LG, pady=(Layout.XS, Layout.MD))
 
     def _setup_dnd(self) -> None:
         self.root.drop_target_register(DND_FILES)
@@ -293,6 +268,7 @@ class MainWindow:
         self._apply_root_background()
         if self.status_label is not None:
             self.status_label.configure(text_color=colors["accent"])
+        self.sidebar.refresh_theme()
         self.settings_panel.refresh_theme()
         self.queue_panel.refresh_theme()
         self.workspace_panel.refresh_theme()
@@ -382,10 +358,12 @@ class MainWindow:
 
         seg.configure(command=on_tab)
 
+    def _resolve_tab_name(self, tab: str) -> str:
+        return _LEGACY_TAB_ALIASES.get(tab, tab)
+
     def _restore_last_tab(self) -> None:
-        tab = self.settings.ui_last_tab
-        valid = ("Pipeline", "Conhecimento", "Biblioteca", "Grafo / Conexões", "Estudo", "Datasets")
-        if tab in valid:
+        tab = self._resolve_tab_name(self.settings.ui_last_tab)
+        if tab in _MAIN_TABS:
             try:
                 self.main_tabs.set(tab)
             except ValueError:

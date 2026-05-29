@@ -7,31 +7,19 @@ import customtkinter as ctk
 
 from src.core.settings_service import SettingsService
 from src.library import get_library
-from src.ui.design.fonts import APP_NAME, APP_TAGLINE, APP_VERSION, body_small, mono, panel_title, section_title
+from src.ui.design.fonts import APP_NAME, APP_TAGLINE, APP_VERSION, body_small, mono, panel_title
 from src.ui.design.spacing import Layout
 from src.ui.design.theme_manager import ThemeManager
 
 
-class SettingsPanel(ctk.CTkFrame):
-    def __init__(
-        self,
-        master,
-        settings: SettingsService,
-        theme: ThemeManager,
-        on_theme_change: Optional[Callable[[str], None]] = None,
-        on_settings_change: Optional[Callable[[], None]] = None,
-        **kwargs,
-    ) -> None:
-        super().__init__(master, **kwargs)
-        self.settings = settings
-        self.theme = theme
-        self.on_theme_change = on_theme_change
-        self.on_settings_change = on_settings_change
+class BrandSidebar(ctk.CTkFrame):
+    """Barra lateral mínima: marca, versão e slogan."""
 
+    def __init__(self, master, theme: ThemeManager, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.theme = theme
         self._apply_frame_style()
-        self._build_brand_header()
-        self._build_controls()
-        self._build_history()
+        self._build_brand()
 
     def _apply_frame_style(self) -> None:
         self.configure(**self.theme.sidebar_kwargs())
@@ -44,26 +32,22 @@ class SettingsPanel(ctk.CTkFrame):
             text_color=colors["text_muted"],
             fg_color=colors["surface_elevated"],
         )
-        self.output_label.configure(text_color=colors["text_muted"])
 
-    def _build_brand_header(self) -> None:
+    def _build_brand(self) -> None:
         colors = self.theme.colors()
         brand = ctk.CTkFrame(self, fg_color="transparent")
-        brand.pack(fill="x", padx=Layout.LG, pady=(Layout.LG, Layout.MD))
+        brand.pack(fill="both", expand=True, padx=Layout.LG, pady=Layout.LG)
 
         ctk.CTkLabel(
             brand,
             text=APP_NAME,
-            font=section_title(),
+            font=panel_title(),
             text_color=colors["text_primary"],
             anchor="w",
         ).pack(fill="x")
 
-        meta = ctk.CTkFrame(brand, fg_color="transparent")
-        meta.pack(fill="x", pady=(Layout.XS, 0))
-
         self.version_badge = ctk.CTkLabel(
-            meta,
+            brand,
             text=f"v{APP_VERSION}",
             font=body_small(),
             text_color=colors["text_muted"],
@@ -71,85 +55,125 @@ class SettingsPanel(ctk.CTkFrame):
             corner_radius=6,
             padx=6,
             pady=1,
+            anchor="w",
         )
-        self.version_badge.pack(side="left")
+        self.version_badge.pack(fill="x", pady=(Layout.SM, 0))
 
         self.brand_tagline = ctk.CTkLabel(
-            meta,
+            brand,
             text=APP_TAGLINE,
             font=body_small(),
             text_color=colors["text_secondary"],
-            wraplength=220,
+            wraplength=180,
             justify="left",
+            anchor="w",
         )
-        self.brand_tagline.pack(fill="x", pady=(Layout.SM, 0))
+        self.brand_tagline.pack(fill="x", pady=(Layout.MD, 0))
 
-        divider = ctk.CTkFrame(self, height=1, fg_color=colors["border"], corner_radius=0)
-        divider.pack(fill="x", padx=Layout.LG, pady=(0, Layout.MD))
+
+class AppSettingsPanel(ctk.CTkFrame):
+    """Preferências da aplicação (aba Configurações)."""
+
+    def __init__(
+        self,
+        master,
+        settings: SettingsService,
+        theme: ThemeManager,
+        on_theme_change: Optional[Callable[[str], None]] = None,
+        on_settings_change: Optional[Callable[[], None]] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(master, fg_color="transparent", **kwargs)
+        self.settings = settings
+        self.theme = theme
+        self.on_theme_change = on_theme_change
+        self.on_settings_change = on_settings_change
+
+        self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll.pack(fill="both", expand=True)
+        self.scroll.grid_columnconfigure(0, weight=1)
+        self.scroll.grid_columnconfigure(1, weight=1)
+
+        self._build_controls()
+        self._build_extra()
+        self._build_history()
+
+    def refresh_theme(self) -> None:
+        colors = self.theme.colors()
+        self.output_label.configure(text_color=colors["text_muted"])
+
+    def _pad(self) -> dict:
+        return {"padx": Layout.MD, "pady": (Layout.XS, Layout.SM), "sticky": "w"}
+
+    def _label(self, parent, row: int, col: int, text: str) -> None:
+        ctk.CTkLabel(parent, text=text, anchor="w", font=body_small()).grid(
+            row=row, column=col, **self._pad()
+        )
 
     def _build_controls(self) -> None:
-        pad = {"padx": Layout.LG, "anchor": "w"}
+        s = self.scroll
+        row = 0
 
-        ctk.CTkLabel(
-            self,
-            text="Configurações",
-            font=panel_title(),
-        ).pack(pady=(0, Layout.SM), **pad)
+        title = ctk.CTkLabel(s, text="Configurações", font=panel_title(), anchor="w")
+        title.grid(row=row, column=0, columnspan=2, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 1
 
-        ctk.CTkLabel(self, text="Tema", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Tema")
         self.theme_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=["System", "Light", "Dark"],
             command=self._change_theme,
-            width=220,
+            width=280,
             **self.theme.option_menu_kwargs(),
         )
         self.theme_menu.set(self.settings.theme)
-        self.theme_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
+        self.theme_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 2
 
-        ctk.CTkLabel(self, text="Idioma (Whisper / OCR)", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Idioma (Whisper / OCR)")
         idiomas = ["auto", "pt", "en", "es", "fr", "de", "it", "ru", "zh"]
         self.language_var = ctk.StringVar(value=self.settings.language)
         self.language_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=idiomas,
             variable=self.language_var,
             command=self._change_language,
-            width=220,
+            width=280,
         )
-        self.language_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
+        self.language_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 2
 
-        ctk.CTkLabel(self, text="Formato padrão de saída", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Formato padrão de saída")
         self.format_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=["txt", "md", "json"],
             command=self._change_format,
-            width=220,
+            width=280,
         )
         self.format_menu.set(self.settings.default_export_format)
-        self.format_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
+        self.format_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 2
 
-        ctk.CTkLabel(self, text="Modo de exportação", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Modo de exportação")
         self.export_mode_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=["raw", "clean", "ai_ready", "notebooklm", "study_mode"],
             command=self._change_export_mode,
-            width=220,
+            width=280,
         )
         self.export_mode_menu.set(self.settings.export_mode)
-        self.export_mode_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
+        self.export_mode_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 2
 
-        ctk.CTkLabel(self, text="Tipo de conteúdo", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Tipo de conteúdo")
         self.template_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=["generic", "sermon", "podcast", "course"],
             command=self._change_template,
-            width=220,
+            width=280,
         )
         self.template_menu.set(self.settings.content_template)
-        self.template_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
-
-        ctk.CTkLabel(self, text="Biblioteca", font=panel_title()).pack(pady=(Layout.SM, Layout.XS), **pad)
+        self.template_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
 
         lib = get_library()
         ws_pairs = lib.workspaces.list_names()
@@ -161,101 +185,125 @@ class SettingsPanel(ctk.CTkFrame):
         else:
             ws_index = 0
 
-        ctk.CTkLabel(self, text="Workspace", anchor="w", font=body_small()).pack(fill="x", **pad)
+        col_row = 0
+        self._label(s, col_row, 1, "Workspace")
         self.workspace_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=ws_labels or ["Biblioteca Principal"],
             command=self._change_workspace,
-            width=220,
+            width=280,
         )
         if ws_labels:
             self.workspace_menu.set(ws_labels[ws_index])
-        self.workspace_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.workspace_menu.grid(row=col_row + 1, column=1, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
         self._workspace_ids = ws_ids
+        col_row += 2
 
         col_names = lib.collections.list_names() + ["(nova…)"]
-        ctk.CTkLabel(self, text="Coleção", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, col_row, 1, "Coleção")
         self.collection_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=col_names or ["Estudos"],
             command=self._change_collection,
-            width=220,
+            width=280,
         )
         if self.settings.collection_name and self.settings.collection_name in col_names:
             self.collection_menu.set(self.settings.collection_name)
         elif col_names:
             self.collection_menu.set(col_names[0])
-        self.collection_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.collection_menu.grid(row=col_row + 1, column=1, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        col_row += 2
 
-        ctk.CTkLabel(self, text="Autor", anchor="w", font=body_small()).pack(fill="x", **pad)
-        self.author_entry = ctk.CTkEntry(self, width=220, placeholder_text="opcional")
+        self._label(s, col_row, 1, "Autor")
+        self.author_entry = ctk.CTkEntry(s, width=280, placeholder_text="opcional")
         self.author_entry.insert(0, self.settings.library_author)
-        self.author_entry.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.author_entry.grid(row=col_row + 1, column=1, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
         self.author_entry.bind("<FocusOut>", lambda _e: self._save_author())
+        col_row += 2
 
-        ctk.CTkLabel(self, text="Speaker", anchor="w", font=body_small()).pack(fill="x", **pad)
-        self.speaker_entry = ctk.CTkEntry(self, width=220, placeholder_text="opcional")
+        self._label(s, col_row, 1, "Speaker")
+        self.speaker_entry = ctk.CTkEntry(s, width=280, placeholder_text="opcional")
         self.speaker_entry.insert(0, self.settings.library_speaker)
-        self.speaker_entry.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.speaker_entry.grid(row=col_row + 1, column=1, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
         self.speaker_entry.bind("<FocusOut>", lambda _e: self._save_speaker())
 
-        ctk.CTkLabel(self, text="Categoria / Tags", anchor="w", font=body_small()).pack(fill="x", **pad)
-        self.category_entry = ctk.CTkEntry(self, width=220, placeholder_text="categoria")
+        self._controls_row_end = row
+
+    def _build_extra(self) -> None:
+        s = self.scroll
+        row = self._controls_row_end + 2
+
+        ctk.CTkLabel(s, text="Biblioteca e saída", font=panel_title(), anchor="w").grid(
+            row=row, column=0, columnspan=2, padx=Layout.MD, pady=(Layout.MD, Layout.SM), sticky="w"
+        )
+        row += 1
+
+        self._label(s, row, 0, "Categoria / Tags")
+        self.category_entry = ctk.CTkEntry(s, width=280, placeholder_text="categoria")
         self.category_entry.insert(0, self.settings.library_category)
-        self.category_entry.pack(padx=Layout.LG, pady=(Layout.XS, Layout.XS), anchor="w")
+        self.category_entry.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.XS), sticky="w")
         self.category_entry.bind("<FocusOut>", lambda _e: self._save_category())
 
-        self.tags_entry = ctk.CTkEntry(self, width=220, placeholder_text="tags separadas por vírgula")
+        self.tags_entry = ctk.CTkEntry(s, width=280, placeholder_text="tags separadas por vírgula")
         self.tags_entry.insert(0, self.settings.library_tags)
-        self.tags_entry.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.tags_entry.grid(row=row + 2, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
         self.tags_entry.bind("<FocusOut>", lambda _e: self._save_tags())
+        row += 3
 
-        ctk.CTkLabel(self, text="Tipo de conhecimento", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Tipo de conhecimento")
         self.knowledge_menu = ctk.CTkOptionMenu(
-            self,
+            s,
             values=["document", "sermon", "podcast", "course", "meeting", "research"],
             command=self._change_knowledge_type,
-            width=220,
+            width=280,
         )
         self.knowledge_menu.set(self.settings.knowledge_type)
-        self.knowledge_menu.pack(padx=Layout.LG, pady=(Layout.XS, Layout.MD), anchor="w")
+        self.knowledge_menu.grid(row=row + 1, column=0, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
+        row += 2
 
-        ctk.CTkLabel(self, text="Pasta global de saída", anchor="w", font=body_small()).pack(fill="x", **pad)
+        self._label(s, row, 0, "Pasta global de saída")
         self.output_label = ctk.CTkLabel(
-            self,
+            s,
             text=self._output_label_text(),
-            wraplength=230,
+            wraplength=400,
             justify="left",
             text_color=self.theme.colors()["text_muted"],
             font=body_small(),
         )
-        self.output_label.pack(padx=Layout.LG, pady=(Layout.XS, Layout.SM), anchor="w")
+        self.output_label.grid(row=row + 1, column=0, columnspan=2, padx=Layout.MD, pady=(0, Layout.SM), sticky="w")
+        row += 2
 
+        btn_row = ctk.CTkFrame(s, fg_color="transparent")
+        btn_row.grid(row=row, column=0, columnspan=2, padx=Layout.MD, pady=(0, Layout.MD), sticky="w")
         ctk.CTkButton(
-            self,
+            btn_row,
             text="Escolher Pasta",
             command=self._choose_output_folder,
-            width=220,
+            width=160,
             **self.theme.primary_button_kwargs(),
-        ).pack(padx=Layout.LG, pady=(0, Layout.SM), anchor="w")
-
+        ).pack(side="left", padx=(0, Layout.SM))
         ctk.CTkButton(
-            self,
+            btn_row,
             text="Usar pasta do arquivo",
             command=self._clear_output_folder,
-            width=220,
+            width=180,
             **self.theme.ghost_button_kwargs(),
-        ).pack(padx=Layout.LG, pady=(0, Layout.LG), anchor="w")
+        ).pack(side="left")
+
+        self._extra_row_end = row + 1
 
     def _build_history(self) -> None:
-        ctk.CTkLabel(
-            self,
-            text="Histórico recente",
-            font=panel_title(),
-        ).pack(padx=Layout.LG, pady=(Layout.SM, Layout.XS), anchor="w")
+        s = self.scroll
+        row = self._extra_row_end + 1
 
-        self.history_box = ctk.CTkTextbox(self, height=140, font=mono())
-        self.history_box.pack(padx=Layout.LG, pady=(0, Layout.LG), fill="both", expand=True)
+        ctk.CTkLabel(s, text="Histórico recente", font=panel_title(), anchor="w").grid(
+            row=row, column=0, columnspan=2, padx=Layout.MD, pady=(Layout.SM, Layout.XS), sticky="w"
+        )
+
+        self.history_box = ctk.CTkTextbox(s, height=160, font=mono())
+        self.history_box.grid(
+            row=row + 1, column=0, columnspan=2, padx=Layout.MD, pady=(0, Layout.LG), sticky="ew"
+        )
         self.history_box.configure(state="disabled")
         self.refresh_history()
 
@@ -389,3 +437,7 @@ class SettingsPanel(ctk.CTkFrame):
                     line += f" — {item['mensagem'][:60]}"
                 self.history_box.insert("end", line + "\n")
         self.history_box.configure(state="disabled")
+
+
+# Compatibilidade com imports legados
+SettingsPanel = AppSettingsPanel
