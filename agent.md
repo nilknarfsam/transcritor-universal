@@ -111,6 +111,8 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | README profissional 3.0.4 | `README.md` reescrito (features, pré-requisitos, instalação, stack); commit `docs: criar README profissional para o CortexFlow 3.0.4`. |
+| 2026-05-29 | Fase 5 — timestamps e progresso Whisper | `format_segments_to_text`, `whisper_progress.py` (tqdm/stderr), job 5%→90%; testes; commit `feat: formatar transcricao com timestamps e capturar progresso real do whisper`. |
 | 2026-05-29 | Sprint Qualidade — PEP 8, docs, bug hunt | Varredura `core/` + `ui/`; `RLock` na fila; `unload_model()`; PIL/XLSX/TXT; `docs/CODE_REVIEW_REPORT.md`; 3 commits locais. |
 | 2026-05-29 | Hotfix UX 3.1 — erro aos 5% | `update_job` fazia `refresh()` total a cada `on_notify` (5%); substituído por update in-place da linha. Callbacks UI protegidos em `QueueManager` + logging. FFmpeg vs FILE_NOT_FOUND corrigido em `job_errors`. Commit `fix: corrigir crash de atualização de UI aos 5% do processamento`. |
 | 2026-05-29 | Hotfix UX 3.1 — filedialog e callbacks | Modal liberava `_panel` destruído ao fechar; `refresh_history()` crashava na conclusão da fila. File dialog sem `parent` e sem defer. Commit `fix: corrigir travamento de filedialog e callbacks de UI quebrados`. |
