@@ -15,8 +15,9 @@ class Layout:
     CORNER_RADIUS_SM = 8
     CORNER_RADIUS_CARD = 10
 
-    SIDEBAR_WIDTH = 200
-    HEADER_HEIGHT = 72
+    SIDEBAR_WIDTH = 200  # legado — não usado na UX 3.1
+    TOOLBAR_HEIGHT = 52
+    STATUS_BAR_HEIGHT = 32
 
     PAD_WINDOW = (MD, LG)
     PAD_PANEL = (LG, LG)

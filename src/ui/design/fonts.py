@@ -5,7 +5,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 APP_NAME = "CortexFlow"
-APP_VERSION = "3.0.3"
+APP_VERSION = "3.0.4"
 APP_TAGLINE = "Transcrição inteligente de áudio, vídeo e documentos"
 APP_SUBTITLE = APP_TAGLINE
 
