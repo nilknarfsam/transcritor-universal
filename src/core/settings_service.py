@@ -29,6 +29,14 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "library_category": "",
     "library_tags": "",
     "knowledge_type": "document",
+    "ui_last_tab": "Pipeline",
+    "ui_last_search_query": "",
+    "ui_search_filter_workspace": "(todos)",
+    "ui_search_filter_collection": "(todas)",
+    "ui_search_filter_node_type": "(todos)",
+    "ui_search_filter_template": "(todos)",
+    "ui_search_filter_export_mode": "(todos)",
+    "ui_search_filter_difficulty": "(todos)",
 }
 
 
@@ -211,6 +219,78 @@ class SettingsService:
     @knowledge_type.setter
     def knowledge_type(self, value: str) -> None:
         self._settings["knowledge_type"] = value
+        self.save_settings()
+
+    @property
+    def ui_last_tab(self) -> str:
+        return str(self._settings.get("ui_last_tab", "Pipeline"))
+
+    @ui_last_tab.setter
+    def ui_last_tab(self, value: str) -> None:
+        self._settings["ui_last_tab"] = value
+        self.save_settings()
+
+    @property
+    def ui_last_search_query(self) -> str:
+        return str(self._settings.get("ui_last_search_query", ""))
+
+    @ui_last_search_query.setter
+    def ui_last_search_query(self, value: str) -> None:
+        self._settings["ui_last_search_query"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_workspace(self) -> str:
+        return str(self._settings.get("ui_search_filter_workspace", "(todos)"))
+
+    @ui_search_filter_workspace.setter
+    def ui_search_filter_workspace(self, value: str) -> None:
+        self._settings["ui_search_filter_workspace"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_collection(self) -> str:
+        return str(self._settings.get("ui_search_filter_collection", "(todas)"))
+
+    @ui_search_filter_collection.setter
+    def ui_search_filter_collection(self, value: str) -> None:
+        self._settings["ui_search_filter_collection"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_node_type(self) -> str:
+        return str(self._settings.get("ui_search_filter_node_type", "(todos)"))
+
+    @ui_search_filter_node_type.setter
+    def ui_search_filter_node_type(self, value: str) -> None:
+        self._settings["ui_search_filter_node_type"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_template(self) -> str:
+        return str(self._settings.get("ui_search_filter_template", "(todos)"))
+
+    @ui_search_filter_template.setter
+    def ui_search_filter_template(self, value: str) -> None:
+        self._settings["ui_search_filter_template"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_export_mode(self) -> str:
+        return str(self._settings.get("ui_search_filter_export_mode", "(todos)"))
+
+    @ui_search_filter_export_mode.setter
+    def ui_search_filter_export_mode(self, value: str) -> None:
+        self._settings["ui_search_filter_export_mode"] = value
+        self.save_settings()
+
+    @property
+    def ui_search_filter_difficulty(self) -> str:
+        return str(self._settings.get("ui_search_filter_difficulty", "(todos)"))
+
+    @ui_search_filter_difficulty.setter
+    def ui_search_filter_difficulty(self, value: str) -> None:
+        self._settings["ui_search_filter_difficulty"] = value
         self.save_settings()
 
     def parse_library_tags(self) -> list[str]:
