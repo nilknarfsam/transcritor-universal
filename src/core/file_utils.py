@@ -1,3 +1,5 @@
+"""Utilitários de caminhos para drag-and-drop e diálogos de arquivo."""
+
 from __future__ import annotations
 
 import os

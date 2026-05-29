@@ -67,6 +67,10 @@ class JobProcessor:
     def cache(self) -> CacheEngine:
         return self._cache
 
+    @property
+    def transcription(self) -> TranscriptionService:
+        return self._transcription
+
     def process(self, job: TranscriptionJob, ctx: QueueRunContext) -> None:
         """Executa o pipeline completo de um job (mutação in-place no ``TranscriptionJob``)."""
         if ctx.is_stop_requested():

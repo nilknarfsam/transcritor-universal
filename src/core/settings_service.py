@@ -49,6 +49,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 
 class SettingsService:
+    """Persistência de ``data/settings.json`` e histórico de transcrições."""
+
     def __init__(self) -> None:
         self._settings = dict(DEFAULT_SETTINGS)
         self._settings["features"] = dict(DEFAULT_FEATURES)

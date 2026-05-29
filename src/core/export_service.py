@@ -13,6 +13,8 @@ ExportFormat = Literal["txt", "md", "json"]
 
 
 class ExportService:
+    """Formata e grava transcrições em TXT, Markdown ou JSON (modo raw ou pipeline AI-ready)."""
+
     @staticmethod
     def format_content(text: str, fmt: ExportFormat) -> str:
         """Formatação legada — usada quando export_mode é raw."""

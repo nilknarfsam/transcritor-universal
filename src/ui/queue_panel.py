@@ -1,3 +1,5 @@
+"""Painel principal da fila de transcrição (UX 3.1)."""
+
 from __future__ import annotations
 
 import os

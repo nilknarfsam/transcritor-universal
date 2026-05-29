@@ -23,6 +23,8 @@ def _utc_now() -> str:
 
 
 class PersistentQueue:
+    """Serializa e restaura o estado da fila em ``data/queue_state.json``."""
+
     def __init__(self) -> None:
         self._logger = get_logger()
         DATA_DIR.mkdir(parents=True, exist_ok=True)

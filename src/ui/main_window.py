@@ -1,3 +1,5 @@
+"""Janela principal CortexFlow — toolbar, fila e callbacks thread-safe."""
+
 from __future__ import annotations
 
 import tkinter.filedialog as fd
@@ -23,6 +25,8 @@ from src.ui.settings_modal import SettingsModal
 
 
 class MainWindow:
+    """Shell da aplicação: fila em foco, configurações em modal, worker em thread separada."""
+
     def __init__(self) -> None:
         setup_logging()
         self._logger = get_logger()
