@@ -64,7 +64,7 @@ class KnowledgeWorkspacePanel(ctk.CTkFrame):
         self._build_detail_column()
         self._restore_preferences()
         self.refresh_dashboard()
-        self._run_search()
+        self.after(100, self._run_search)
 
     def _build_dashboard_strip(self) -> None:
         self.dashboard_frame = ctk.CTkFrame(self, fg_color="transparent")
