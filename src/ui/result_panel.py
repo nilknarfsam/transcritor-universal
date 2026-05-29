@@ -98,7 +98,7 @@ class ResultPanel(ctk.CTkFrame):
             text_color=colors["text_muted"],
             font=body_small(),
             anchor="w",
-            wraplength=700,
+            wraplength=360,
         )
         self.meta_label.pack(fill="x", padx=Layout.LG, pady=(0, Layout.XS))
 
@@ -108,7 +108,7 @@ class ResultPanel(ctk.CTkFrame):
             text_color=colors["text_secondary"],
             font=caption(),
             anchor="w",
-            wraplength=700,
+            wraplength=360,
             justify="left",
         )
         self.semantic_label.pack(fill="x", padx=Layout.LG, pady=(0, Layout.SM))

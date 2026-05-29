@@ -6,7 +6,7 @@ import tkinter.messagebox as mb
 import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
-from src.core.file_utils import FILE_DIALOG_TYPES, parse_dropped_paths
+from src.core.file_utils import FILE_DIALOG_TYPES, collect_supported_files, parse_dropped_paths
 from src.core.log_service import setup_logging
 from src.core.queue_manager import QueueManager, QueueStats
 from src.core.settings_service import SettingsService
@@ -113,8 +113,8 @@ class MainWindow:
             self.main_tabs.add(name)
 
         transcription_tab = self.main_tabs.tab("Transcrição")
-        transcription_tab.grid_columnconfigure(0, weight=3)
-        transcription_tab.grid_columnconfigure(1, weight=2)
+        transcription_tab.grid_columnconfigure(0, weight=7)
+        transcription_tab.grid_columnconfigure(1, weight=3)
         transcription_tab.grid_rowconfigure(0, weight=1)
 
         self.queue_panel = QueuePanel(
@@ -130,6 +130,7 @@ class MainWindow:
         )
         self.result_panel.grid(row=0, column=1, sticky="nsew")
         self.queue_panel.set_add_files_handler(self.add_files_dialog)
+        self.queue_panel.set_add_folder_handler(self.add_folder_dialog)
         self.queue_panel.set_status_handler(self._set_status)
 
         settings_tab = self.main_tabs.tab("Configurações")
@@ -228,7 +229,7 @@ class MainWindow:
         paths = parse_dropped_paths(event.data)
         if paths:
             self._add_paths(paths)
-            self.queue_panel.drop_hint.configure(text=f"{len(paths)} arquivo(s) adicionado(s)")
+            self._set_status(f"{len(paths)} arquivo(s) adicionado(s) à fila.")
         else:
             self._set_status("Arquivo não encontrado no drag & drop.")
 
@@ -238,6 +239,16 @@ class MainWindow:
         )
         if paths:
             self._add_paths(list(paths))
+
+    def add_folder_dialog(self) -> None:
+        folder = fd.askdirectory(title="Escolha uma pasta com arquivos para processar")
+        if not folder:
+            return
+        paths = collect_supported_files(folder)
+        if not paths:
+            self._set_status("Nenhum arquivo suportado encontrado na pasta.")
+            return
+        self._add_paths(paths)
 
     def _add_paths(self, paths: list[str]) -> None:
         added = self.queue_manager.add_files(paths)
@@ -307,7 +318,7 @@ class MainWindow:
             if reset:
                 msg += f" {reset} em processamento voltaram a aguardar."
             if pending:
-                msg += " Clique em Iniciar Fila para continuar."
+                msg += " Clique em Iniciar transcrição para continuar."
             self._set_status(msg)
             if self.queue_manager.jobs:
                 self.queue_manager.select_job(self.queue_manager.jobs[0].id)

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+from src.models.transcription_job import SUPPORTED_EXTENSIONS
+
 
 def parse_dropped_paths(data: str) -> list[str]:
     """Interpreta caminhos do drag-and-drop no Windows (com ou sem chaves)."""
@@ -41,6 +43,21 @@ def parse_dropped_paths(data: str) -> list[str]:
             paths = [cleaned]
 
     return [p for p in paths if os.path.isfile(p)]
+
+
+def collect_supported_files(folder: str) -> list[str]:
+    """Lista arquivos suportados recursivamente em uma pasta."""
+    paths: list[str] = []
+    folder = folder.strip().strip('"')
+    if not folder or not os.path.isdir(folder):
+        return paths
+    for root, _dirs, files in os.walk(folder):
+        for name in files:
+            path = os.path.join(root, name)
+            ext = os.path.splitext(path)[1].lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                paths.append(path)
+    return paths
 
 
 FILE_DIALOG_TYPES = [
