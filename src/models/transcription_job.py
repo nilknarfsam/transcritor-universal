@@ -65,6 +65,7 @@ class TranscriptionJob:
     error_code: str = ""
     semantic_metadata: dict[str, Any] = field(default_factory=dict)
     study_metadata: dict[str, Any] = field(default_factory=dict)
+    dataset_metadata: dict[str, Any] = field(default_factory=dict)
     pipeline_progress: dict[str, bool] = field(default_factory=dict)
     job_progress: float = 0.0
     export_mode: str = ""

@@ -360,6 +360,8 @@ class SettingsService:
         related_documents_count: str = "",
         semantic_search_hits: str = "",
         graph_updated_at: str = "",
+        knowledge_readiness_score: str = "",
+        dataset_id: str = "",
     ) -> None:
         entry: dict[str, str] = {
             "arquivo": file_name,
@@ -428,6 +430,10 @@ class SettingsService:
             entry["semantic_search_hits"] = semantic_search_hits
         if graph_updated_at:
             entry["graph_updated_at"] = graph_updated_at
+        if knowledge_readiness_score:
+            entry["knowledge_readiness_score"] = knowledge_readiness_score
+        if dataset_id:
+            entry["dataset_id"] = dataset_id
         self._history.append(entry)
         max_items = self.max_history
         if len(self._history) > max_items:

@@ -15,7 +15,7 @@ from src.models.transcription_job import JobStatus, TranscriptionJob
 
 QUEUE_STATE_FILE = DATA_DIR / "queue_state.json"
 STATE_VERSION = 1
-PIPELINE_CHECKPOINTS = ("whisper", "ocr", "clean", "semantic", "study", "notebooklm")
+PIPELINE_CHECKPOINTS = ("whisper", "ocr", "clean", "semantic", "study", "notebooklm", "dataset")
 
 
 def _utc_now() -> str:

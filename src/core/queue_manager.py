@@ -8,6 +8,8 @@ from typing import Callable, Optional
 
 from src.cache.cache_engine import CacheEngine, CacheLookupResult
 from src.library import get_library
+from src.datasets.dataset_engine import get_dataset_engine
+from src.datasets.exporters.dataset_exporter import DatasetExporter
 from src.study import StudyExporter
 from src.study.study_engine import StudyResult
 from src.core.extraction_service import ExtractionService
@@ -474,7 +476,7 @@ class QueueManager:
                 if export_mode == "study_mode":
                     self._persistent.update_job_checkpoint(job, "study", progress=0.9)
                 if export_mode in ("notebooklm", "study_mode"):
-                    self._persistent.update_job_checkpoint(job, "notebooklm", progress=0.95)
+                    self._persistent.update_job_checkpoint(job, "notebooklm", progress=0.93)
 
             study_exports: dict[str, str] = {}
             if stage and stage.metadata.get("study_package"):
@@ -523,6 +525,18 @@ class QueueManager:
                 pipeline_stage=pipeline_stage,
                 stage_metadata=semantic_meta,
             )
+
+            dataset_meta: dict = {}
+            if catalog_id and export_mode in ("ai_ready", "notebooklm", "study_mode"):
+                dataset_meta = self._update_datasets(
+                    job,
+                    catalog_id=catalog_id,
+                    stage_metadata=semantic_meta,
+                )
+                if dataset_meta:
+                    self._persistent.update_job_checkpoint(job, "dataset", progress=0.98)
+                    pipeline_stage = "dataset"
+
             hist_fields = metrics.to_history_fields()
             ws_name, col_name = self._library_names()
             self.settings.add_history_entry(
@@ -559,6 +573,8 @@ class QueueManager:
                 related_documents_count=graph_fields.get("related_documents_count", ""),
                 semantic_search_hits=graph_fields.get("semantic_search_hits", ""),
                 graph_updated_at=graph_fields.get("graph_updated_at", ""),
+                knowledge_readiness_score=str(dataset_meta.get("knowledge_readiness_score", "")),
+                dataset_id=dataset_meta.get("dataset_id", ""),
             )
             self._logger.info("Concluído: %s -> %s", job.file_name, job.output_path)
         except Exception as exc:
@@ -683,6 +699,35 @@ class QueueManager:
             return StudyExporter.write_exports(output_path, study)
         except OSError as exc:
             self._logger.warning("Exportações de estudo falharam: %s", exc)
+            return {}
+
+    def _update_datasets(
+        self,
+        job: TranscriptionJob,
+        *,
+        catalog_id: str,
+        stage_metadata: dict,
+    ) -> dict:
+        try:
+            ws_name, col_name = self._library_names()
+            engine = get_dataset_engine()
+            result = engine.build_from_document(
+                document_id=catalog_id,
+                title=os.path.splitext(job.file_name)[0],
+                source_path=job.file_path,
+                workspace=ws_name,
+                collection=col_name,
+                author=self.settings.library_author,
+                speaker=self.settings.library_speaker,
+                stage_metadata=stage_metadata,
+                semantic_metadata=job.semantic_metadata,
+                catalog_id=catalog_id,
+            )
+            DatasetExporter().export_all()
+            job.dataset_metadata = result.to_metadata()
+            return result.to_metadata()
+        except Exception as exc:
+            self._logger.warning("Atualização de datasets falhou: %s", exc)
             return {}
 
     def _register_in_library(

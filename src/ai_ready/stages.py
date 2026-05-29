@@ -14,6 +14,7 @@ class ContentStage(str, Enum):
     SEMANTIC = "semantic"
     STUDY = "study"
     NOTEBOOKLM = "notebooklm"
+    DATASET = "dataset"
 
 
 EXPORT_MODES = ("raw", "clean", "ai_ready", "notebooklm", "study_mode")

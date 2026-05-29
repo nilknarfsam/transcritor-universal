@@ -1,4 +1,4 @@
-"""Exportador NotebookLM — RAW → … → SEMANTIC → STUDY → NOTEBOOKLM (study_mode)."""
+"""Exportador NotebookLM — RAW → … → SEMANTIC → STUDY → NOTEBOOKLM → DATASET (pós-fila)."""
 
 from __future__ import annotations
 
