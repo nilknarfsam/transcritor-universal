@@ -171,7 +171,7 @@ class QueueManager:
 
         self._emit_progress()
         if self._on_queue_recovered:
-            self._on_queue_recovered(meta)
+            self._safe_ui("on_queue_recovered", self._on_queue_recovered, meta)
 
         if auto and meta.get("was_processing") and pending:
             self._logger.info("Fila restaurada com %d item(ns) pendente(s).", len(pending))
@@ -316,7 +316,7 @@ class QueueManager:
             self._persist_queue()
             self._emit_progress()
             if self._on_queue_idle:
-                self._on_queue_idle()
+                self._safe_ui("on_queue_idle", self._on_queue_idle)
             msg = "Fila cancelada." if was_cancelled else "Fila finalizada."
             self._emit_status(msg)
             self._logger.info(msg)
@@ -358,17 +358,28 @@ class QueueManager:
                 return job
         return None
 
+    def _safe_ui(self, label: str, fn: Callable[..., None], *args, **kwargs) -> None:
+        try:
+            fn(*args, **kwargs)
+        except Exception:
+            self._logger.exception("Callback UI falhou (%s)", label)
+
     def _notify(self, job: TranscriptionJob) -> None:
         from src.core.persistent_queue import _utc_now
 
         job.updated_at = _utc_now()
         if self._on_job_updated:
-            self._on_job_updated(job)
+            self._safe_ui("on_job_updated", self._on_job_updated, job)
 
     def _emit_status(self, message: str) -> None:
         if self._on_status_message:
-            self._on_status_message(message)
+            self._safe_ui("on_status_message", self._on_status_message, message)
 
     def _emit_progress(self) -> None:
         if self._on_progress:
-            self._on_progress(self.get_overall_progress(), self.stats)
+            self._safe_ui(
+                "on_progress",
+                self._on_progress,
+                self.get_overall_progress(),
+                self.stats,
+            )

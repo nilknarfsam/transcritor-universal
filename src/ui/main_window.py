@@ -9,7 +9,7 @@ import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from src.core.file_utils import FILE_DIALOG_TYPES, collect_supported_files, parse_dropped_paths
-from src.core.log_service import setup_logging
+from src.core.log_service import get_logger, setup_logging
 from src.core.queue_manager import QueueManager, QueueStats
 from src.core.settings_service import SettingsService
 from src.core.transcription_service import TranscriptionService
@@ -25,6 +25,7 @@ from src.ui.settings_modal import SettingsModal
 class MainWindow:
     def __init__(self) -> None:
         setup_logging()
+        self._logger = get_logger()
         try:
             TranscriptionService().ensure_whisper()
         except RuntimeError as exc:
@@ -273,6 +274,7 @@ class MainWindow:
             if paths:
                 self._add_paths(list(paths))
         except Exception:
+            self._logger.exception("Erro ao abrir seletor de arquivos")
             traceback.print_exc()
             self._set_status("Erro ao abrir seletor de arquivos.")
 
@@ -294,6 +296,7 @@ class MainWindow:
                 return
             self._add_paths(paths)
         except Exception:
+            self._logger.exception("Erro ao abrir seletor de pasta")
             traceback.print_exc()
             self._set_status("Erro ao abrir seletor de pasta.")
 
@@ -310,6 +313,7 @@ class MainWindow:
                 self.queue_manager.stats,
             )
         except Exception:
+            self._logger.exception("Erro ao adicionar arquivos à fila")
             traceback.print_exc()
             self._set_status("Erro ao adicionar arquivos à fila.")
 
@@ -380,6 +384,7 @@ class MainWindow:
         self.queue_panel.refresh()
 
     def _on_job_updated(self, job: TranscriptionJob) -> None:
+        """Atualiza apenas fila + detalhes compactos — sem result_panel legado."""
         try:
             self.queue_panel.update_job(job)
             if job.status == JobStatus.COMPLETED:
@@ -389,6 +394,12 @@ class MainWindow:
                 self.queue_manager.stats,
             )
         except Exception:
+            self._logger.exception(
+                "Falha ao atualizar UI do job %s (status=%s, progress=%.0f%%)",
+                job.file_name,
+                job.status.value,
+                job.job_progress * 100,
+            )
             traceback.print_exc()
 
     def _on_queue_idle(self) -> None:
@@ -399,6 +410,7 @@ class MainWindow:
             )
             self.settings_modal.refresh_history()
         except Exception:
+            self._logger.exception("Falha ao finalizar atualização da fila na UI")
             traceback.print_exc()
 
     def _update_progress(self, value: float, stats: QueueStats) -> None:
@@ -412,6 +424,7 @@ class MainWindow:
             if self.btn_cancel is not None and self.btn_cancel.winfo_exists():
                 self.btn_cancel.configure(state="normal" if processing else "disabled")
         except Exception:
+            self._logger.exception("Falha ao atualizar barra de status/toolbar")
             traceback.print_exc()
 
     def _set_status(self, message: str) -> None:

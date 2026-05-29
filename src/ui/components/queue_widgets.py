@@ -8,6 +8,8 @@ from typing import Optional
 
 import customtkinter as ctk
 
+from src.core.log_service import get_logger
+
 from src.models.transcription_job import JobStatus, TranscriptionJob
 from src.ui.design.colors import SEMANTIC
 from src.ui.design.fonts import badge, body_small, caption, panel_title
@@ -165,6 +167,7 @@ class JobDetailsPanel(ctk.CTkFrame):
         try:
             self._show_job_impl(job)
         except Exception:
+            get_logger().exception("Falha ao atualizar detalhes compactos do item")
             traceback.print_exc()
 
     def _show_job_impl(self, job: Optional[TranscriptionJob]) -> None:

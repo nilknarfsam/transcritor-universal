@@ -19,6 +19,15 @@ def classify_job_error(exc: BaseException, file_path: str) -> JobErrorInfo:
     detail = f"{type(exc).__name__}: {exc}"
 
     if isinstance(exc, FileNotFoundError):
+        if path and os.path.isfile(path):
+            return JobErrorInfo(
+                user_message=(
+                    "FFmpeg não encontrado. Instale o FFmpeg e adicione ao PATH do sistema "
+                    "(necessário para transcrever áudio e vídeo)."
+                ),
+                error_code="FFMPEG_NOT_FOUND",
+                technical_detail=detail,
+            )
         return JobErrorInfo(
             user_message=f"Arquivo não encontrado: {name}",
             error_code="FILE_NOT_FOUND",

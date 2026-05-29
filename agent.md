@@ -100,6 +100,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Hotfix UX 3.1 — erro aos 5% | `update_job` fazia `refresh()` total a cada `on_notify` (5%); substituído por update in-place da linha. Callbacks UI protegidos em `QueueManager` + logging. FFmpeg vs FILE_NOT_FOUND corrigido em `job_errors`. Commit `fix: corrigir crash de atualização de UI aos 5% do processamento`. |
 | 2026-05-29 | Hotfix UX 3.1 — filedialog e callbacks | Modal liberava `_panel` destruído ao fechar; `refresh_history()` crashava na conclusão da fila. File dialog sem `parent` e sem defer. Commit `fix: corrigir travamento de filedialog e callbacks de UI quebrados`. |
 | 2026-05-29 | Sprint UX 3.1 — Simplificação Radical | UI 3.0.4: fila em foco, toolbar, modal de config, resultado em janela secundária, legacy_ui, `docs/UI_CLEANUP_REPORT.md`; commits locais da sprint. |
 | 2026-05-29 | Fase 3 — Testes e boot | `tests/test_knowledge_pipeline.py`; lazy load de biblioteca em `settings_panel.py`; commit `refatoração: testes knowledge_pipeline e lazy boot (Fase 3)`. |

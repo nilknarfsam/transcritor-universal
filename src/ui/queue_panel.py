@@ -4,10 +4,12 @@ import os
 import subprocess
 import sys
 import traceback
+from dataclasses import dataclass
 from typing import Callable, Optional
 
 import customtkinter as ctk
 
+from src.core.log_service import get_logger
 from src.core.queue_manager import QueueManager, QueueStats
 from src.models.transcription_job import JobStatus, TranscriptionJob
 from src.ui.components.queue_widgets import (
@@ -31,6 +33,17 @@ _TABLE_COLUMNS = (
 )
 
 
+@dataclass
+class _QueueRowCells:
+    """Referências mutáveis de uma linha da fila — evita refresh completo a cada notify."""
+
+    frame: ctk.CTkFrame
+    status_badge: StatusBadge
+    progress_cell: ctk.CTkFrame
+    output_label: ctk.CTkLabel
+    time_label: ctk.CTkLabel
+
+
 class QueuePanel(ctk.CTkFrame):
     """Lista de transcrição — foco principal da interface UX 3.1."""
 
@@ -49,6 +62,8 @@ class QueuePanel(ctk.CTkFrame):
         self.on_selection_change = on_selection_change
         self.on_view_result = on_view_result
         self._row_widgets: dict[str, ctk.CTkFrame] = {}
+        self._row_cells: dict[str, _QueueRowCells] = {}
+        self._logger = get_logger()
 
         self._on_status: Optional[Callable[[str], None]] = None
         self._queue_restored = False
@@ -57,11 +72,11 @@ class QueuePanel(ctk.CTkFrame):
         self._build_details()
         self._safe(self.refresh)
 
-    @staticmethod
-    def _safe(fn: Callable[[], None]) -> None:
+    def _safe(self, fn: Callable[[], None], *, context: str = "ui") -> None:
         try:
             fn()
         except Exception:
+            self._logger.exception("Falha na atualização da fila (%s)", context)
             traceback.print_exc()
 
     def refresh_theme(self) -> None:
@@ -77,7 +92,7 @@ class QueuePanel(ctk.CTkFrame):
             self.btn_view_result.configure(**self.theme.ghost_button_kwargs())
             self.refresh()
 
-        self._safe(_do)
+        self._safe(_do, context="refresh_theme")
 
     def set_queue_restored(self, restored: bool) -> None:
         self._queue_restored = restored
@@ -158,7 +173,7 @@ class QueuePanel(ctk.CTkFrame):
         self.btn_view_result.pack(side="left")
 
     def update_progress(self, value: float, stats: QueueStats) -> None:
-        self._safe(self._update_view_button)
+        self._safe(self._update_view_button, context="update_progress")
 
     def _update_view_button(self) -> None:
         if not self.winfo_exists():
@@ -240,6 +255,7 @@ class QueuePanel(ctk.CTkFrame):
             for widget in self.scroll.winfo_children():
                 widget.destroy()
             self._row_widgets.clear()
+            self._row_cells.clear()
 
             has_jobs = bool(self.queue.jobs)
             if has_jobs:
@@ -254,7 +270,46 @@ class QueuePanel(ctk.CTkFrame):
             self._update_view_button()
             self.details_panel.show_job(self.queue.selected_job)
 
-        self._safe(_do)
+        self._safe(_do, context="refresh")
+
+    @staticmethod
+    def _short_output(path: str) -> str:
+        out_display = path or "—"
+        if len(out_display) > 32:
+            out_display = "…" + out_display[-29:]
+        return out_display
+
+    def _fill_progress_cell(self, cell: ctk.CTkFrame, job: TranscriptionJob) -> None:
+        for widget in cell.winfo_children():
+            widget.destroy()
+        colors = self.theme.colors()
+        if job.status == JobStatus.PROCESSING:
+            bar = ctk.CTkProgressBar(
+                cell,
+                width=64,
+                height=8,
+                progress_color=colors["primary"],
+            )
+            bar.set(max(0.05, min(1.0, job.job_progress)))
+            bar.pack()
+        else:
+            pct = f"{int(job.job_progress * 100)}%" if job.job_progress else "—"
+            ctk.CTkLabel(
+                cell,
+                text=pct,
+                font=caption(),
+                text_color=colors["text_muted"],
+            ).pack()
+
+    def _apply_job_to_row(self, job: TranscriptionJob) -> None:
+        cells = self._row_cells.get(job.id)
+        if cells is None or not cells.frame.winfo_exists():
+            return
+        cells.status_badge.apply_status(self._status_key(job.status))
+        self._fill_progress_cell(cells.progress_cell, job)
+        cells.output_label.configure(text=self._short_output(job.output_path or "—"))
+        cells.time_label.configure(text=_elapsed_label(job))
+        self._highlight_all()
 
     def _status_key(self, status: JobStatus) -> str:
         return {
@@ -306,42 +361,33 @@ class QueuePanel(ctk.CTkFrame):
 
         progress_cell = ctk.CTkFrame(row, fg_color="transparent")
         progress_cell.grid(row=0, column=3, padx=Layout.XS, pady=Layout.SM, sticky="w")
-        if job.status == JobStatus.PROCESSING:
-            bar = ctk.CTkProgressBar(
-                progress_cell,
-                width=64,
-                height=8,
-                progress_color=colors["primary"],
-            )
-            bar.set(max(0.05, min(1.0, job.job_progress)))
-            bar.pack()
-        else:
-            ctk.CTkLabel(
-                progress_cell,
-                text=f"{int(job.job_progress * 100)}%" if job.job_progress else "—",
-                font=caption(),
-                text_color=colors["text_muted"],
-            ).pack()
+        self._fill_progress_cell(progress_cell, job)
 
-        out_display = job.output_path or "—"
-        if len(out_display) > 32:
-            out_display = "…" + out_display[-29:]
-
-        ctk.CTkLabel(
+        output_label = ctk.CTkLabel(
             row,
-            text=out_display,
+            text=self._short_output(job.output_path or "—"),
             anchor="w",
             font=body_small(),
             text_color=colors["text_muted"],
-        ).grid(row=0, column=4, padx=Layout.XS, pady=Layout.SM, sticky="ew")
+        )
+        output_label.grid(row=0, column=4, padx=Layout.XS, pady=Layout.SM, sticky="ew")
 
-        ctk.CTkLabel(
+        time_label = ctk.CTkLabel(
             row,
             text=_elapsed_label(job),
             anchor="w",
             font=caption(),
             text_color=colors["text_muted"],
-        ).grid(row=0, column=5, padx=Layout.SM, pady=Layout.SM, sticky="w")
+        )
+        time_label.grid(row=0, column=5, padx=Layout.SM, pady=Layout.SM, sticky="w")
+
+        self._row_cells[job.id] = _QueueRowCells(
+            frame=row,
+            status_badge=status_badge,
+            progress_cell=progress_cell,
+            output_label=output_label,
+            time_label=time_label,
+        )
 
         for widget in (row, status_badge, progress_cell):
             widget.bind("<Button-1>", lambda e, jid=job.id: self._select(jid))
@@ -350,6 +396,9 @@ class QueuePanel(ctk.CTkFrame):
                 child.bind("<Button-1>", lambda e, jid=job.id: self._select(jid))
 
     def _select(self, job_id: str) -> None:
+        self._safe(lambda: self._select_impl(job_id), context="select")
+
+    def _select_impl(self, job_id: str) -> None:
         self.queue.select_job(job_id)
         self._highlight_all()
         job = self.queue.selected_job
@@ -362,6 +411,8 @@ class QueuePanel(ctk.CTkFrame):
         colors = self.theme.colors()
         selected = self.queue.selected_job
         for jid, row in self._row_widgets.items():
+            if not row.winfo_exists():
+                continue
             if selected and jid == selected.id:
                 row.configure(
                     fg_color=colors["card_selected"],
@@ -372,12 +423,23 @@ class QueuePanel(ctk.CTkFrame):
                 row.configure(fg_color=colors["card_bg"], border_width=0)
 
     def update_job(self, job: TranscriptionJob) -> None:
-        def _do() -> None:
-            self.refresh()
-            if self.queue.selected_job and self.queue.selected_job.id == job.id:
-                self.details_panel.show_job(job)
-                self._update_view_button()
-                if self.on_selection_change:
-                    self.on_selection_change(job)
+        """Atualiza só a linha afetada + detalhes compactos (sem refresh completo)."""
 
-        self._safe(_do)
+        def _do() -> None:
+            if not self.winfo_exists():
+                return
+
+            cells = self._row_cells.get(job.id)
+            if cells is not None and cells.frame.winfo_exists():
+                self._apply_job_to_row(job)
+            elif len(self._row_cells) != len(self.queue.jobs):
+                self.refresh()
+            else:
+                self.refresh()
+
+            selected = self.queue.selected_job
+            if selected and selected.id == job.id:
+                self.details_panel.show_job(job)
+            self._update_view_button()
+
+        self._safe(_do, context=f"update_job:{job.file_name}")
