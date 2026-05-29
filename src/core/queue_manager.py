@@ -1,32 +1,18 @@
 from __future__ import annotations
 
-import json
 import os
 import threading
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from src.cache.cache_engine import CacheEngine, CacheLookupResult
-from src.library import get_library
-from src.datasets.dataset_engine import get_dataset_engine
-from src.datasets.exporters.dataset_exporter import DatasetExporter
-from src.study import StudyExporter
-from src.study.study_engine import StudyResult
-from src.core.extraction_service import ExtractionService
+from src.cache.cache_engine import CacheEngine
 from src.core.export_service import ExportService
-from src.core.job_errors import classify_job_error, format_traceback
+from src.core.job_errors import classify_job_error
+from src.core.job_processor import JobProcessor, QueueRunContext
 from src.core.log_service import get_logger
-from src.core.performance_metrics import PerformanceMetrics
 from src.core.persistent_queue import PersistentQueue
 from src.core.settings_service import SettingsService
-from src.core.transcription_service import TranscriptionService
-from src.models.transcription_job import (
-    AUDIO_EXTENSIONS,
-    IMAGE_EXTENSIONS,
-    VIDEO_EXTENSIONS,
-    JobStatus,
-    TranscriptionJob,
-)
+from src.models.transcription_job import JobStatus, TranscriptionJob
 
 
 JobCallback = Callable[[TranscriptionJob], None]
@@ -60,6 +46,8 @@ class QueueStats:
 
 
 class QueueManager:
+    """Gerencia estado da fila, persistência, worker thread e delega processamento ao ``JobProcessor``."""
+
     def __init__(
         self,
         settings: SettingsService,
@@ -68,6 +56,8 @@ class QueueManager:
         on_status_message: Optional[Callable[[str], None]] = None,
         on_progress: Optional[ProgressCallback] = None,
         on_queue_recovered: Optional[RecoveryCallback] = None,
+        *,
+        job_processor: Optional[JobProcessor] = None,
     ) -> None:
         self.settings = settings
         self._jobs: list[TranscriptionJob] = []
@@ -77,10 +67,8 @@ class QueueManager:
         self._on_status_message = on_status_message
         self._on_progress = on_progress
         self._on_queue_recovered = on_queue_recovered
-        self._transcription = TranscriptionService()
-        self._extraction = ExtractionService()
-        self._export = ExportService()
         self._cache = CacheEngine()
+        self._processor = job_processor or JobProcessor(settings, cache=self._cache)
         self._persistent = PersistentQueue()
         self._logger = get_logger()
         self._worker: Optional[threading.Thread] = None
@@ -116,6 +104,10 @@ class QueueManager:
     @property
     def cache_engine(self) -> CacheEngine:
         return self._cache
+
+    @property
+    def job_processor(self) -> JobProcessor:
+        return self._processor
 
     @property
     def recovery_meta(self) -> dict:
@@ -330,471 +322,30 @@ class QueueManager:
             self._logger.info(msg)
 
     def _process_job(self, job: TranscriptionJob) -> None:
-        if self._stop_requested:
-            return
+        ctx = QueueRunContext(
+            is_stop_requested=lambda: self._stop_requested,
+            on_notify=self._notify,
+            on_persist=self._persist_queue,
+            on_status=self._emit_status,
+            on_completed=lambda: setattr(self, "_session_completed", self._session_completed + 1),
+            on_error=lambda: setattr(self, "_session_errors", self._session_errors + 1),
+            set_last_cache_status=lambda status: setattr(self, "_last_cache_status", status),
+            recovery_meta=self._recovery_meta,
+            queue_restored=self._queue_restored,
+        )
+        self._processor.process(job, ctx)
 
-        metrics = PerformanceMetrics()
-        metrics.start_total()
-        recovery_used = self._queue_restored
-
-        job.status = JobStatus.PROCESSING
-        job.error_message = ""
-        job.error_code = ""
-        job.export_mode = self.settings.export_mode
-        job.content_template = self.settings.content_template
-        job.job_progress = 0.05
-        self._notify(job)
-        self._emit_status(f"Processando: {job.file_name}")
-        self._logger.info("Processando job: %s (%s)", job.file_name, job.file_type)
-
-        try:
-            if not os.path.isfile(job.file_path):
-                raise FileNotFoundError(job.file_path)
-
-            language = self.settings.language
-            model_name = self.settings.whisper_model
-            export_mode = self.settings.export_mode
-            template = self.settings.content_template
-            ext = job.extension
-
-            cache_lookup = self._safe_cache_lookup(job.file_path, export_mode, template, language)
-            if cache_lookup.fingerprint:
-                job.file_hash = cache_lookup.file_hash
-
-            text = ""
-            source_kind = ""
-            reused = False
-
-            if cache_lookup.hit and export_mode == "notebooklm":
-                cached_out = self._cache.read_stage(cache_lookup.file_hash, "notebooklm")
-                if cached_out:
-                    text = cache_lookup.raw_text or self._cache.read_stage(cache_lookup.file_hash, "whisper") or self._cache.read_stage(cache_lookup.file_hash, "ocr")
-                    metrics.cache_hit = True
-                    metrics.reused_pipeline = True
-                    job.cache_status = "hit"
-                    self._last_cache_status = "hit"
-                    reused = True
-                    for stage in cache_lookup.reused_stages:
-                        self._persistent.update_job_checkpoint(job, stage)
-                    job.job_progress = 0.85
-                    self._notify(job)
-                    self._write_cached_export(job, cached_out, metrics, recovery_used)
-                    return
-
-            if cache_lookup.raw_text:
-                text = cache_lookup.raw_text
-                metrics.cache_hit = cache_lookup.hit
-                metrics.reused_pipeline = True
-                job.cache_status = "hit" if cache_lookup.hit else "partial"
-                self._last_cache_status = job.cache_status or "hit"
-                reused = True
-                for stage in cache_lookup.reused_stages:
-                    self._persistent.update_job_checkpoint(job, stage)
-                if "whisper" in cache_lookup.reused_stages:
-                    self._persistent.update_job_checkpoint(job, "whisper", progress=0.4)
-                if "ocr" in cache_lookup.reused_stages:
-                    self._persistent.update_job_checkpoint(job, "ocr", progress=0.4)
-            else:
-                job.cache_status = "miss"
-                self._last_cache_status = "miss"
-
-            if not text:
-                if ext in (AUDIO_EXTENSIONS | VIDEO_EXTENSIONS):
-                    metrics.start_whisper()
-                    text = self._transcription.transcribe_media(
-                        job.file_path, language=language, model_name=model_name
-                    )
-                    metrics.stop_whisper()
-                    source_kind = "whisper"
-                    self._persistent.update_job_checkpoint(job, "whisper", progress=0.45)
-                    self._cache.save_stage(
-                        job.file_path, "whisper", text,
-                        export_mode=export_mode, template=template, language=language,
-                    )
-                elif self._extraction.can_extract(job):
-                    metrics.start_ocr()
-                    text = self._extraction.extract(job, language=language)
-                    metrics.stop_ocr()
-                    source_kind = "ocr" if ext in IMAGE_EXTENSIONS else "ocr"
-                    self._persistent.update_job_checkpoint(job, "ocr", progress=0.45)
-                    self._cache.save_stage(
-                        job.file_path, "ocr", text,
-                        export_mode=export_mode, template=template, language=language,
-                    )
-                else:
-                    raise ValueError("Tipo de arquivo não suportado para transcrição.")
-
-            if self._stop_requested:
-                job.status = JobStatus.CANCELLED
-                job.error_message = "Cancelado durante o processamento."
-                self._persist_queue(is_processing=True)
-                return
-
-            job.result_text = text
-            job.job_progress = 0.55
-            self._persist_queue(is_processing=True)
-            self._notify(job)
-
-            if self._stop_requested:
-                job.status = JobStatus.CANCELLED
-                job.error_message = "Cancelado durante o processamento."
-                return
-
-            output_dir = self.settings.resolve_output_dir(job.file_path)
-            fmt = self.settings.default_export_format  # type: ignore[arg-type]
-
-            if reused and export_mode != "raw" and self._cache.read_stage(cache_lookup.file_hash, export_mode if export_mode in ("clean", "semantic") else "notebooklm"):
-                stage_key = "notebooklm" if export_mode == "notebooklm" else "semantic" if export_mode == "ai_ready" else "clean"
-                cached_content = self._cache.read_stage(cache_lookup.file_hash, stage_key)
-                if cached_content and export_mode == "notebooklm":
-                    self._write_cached_export(job, cached_content, metrics, recovery_used)
-                    return
-
-            lib_ctx = self._library_export_context(job)
-
-            metrics.start_semantic()
-            metrics.start_export()
-            job.output_path, stage = self._export.save_auto(
-                job.file_path,
-                text,
-                output_dir,
-                fmt,
-                export_mode=export_mode,
-                content_template=template,
-                language=language,
-                model=model_name,
-                library_context=lib_ctx,
-            )
-            metrics.stop_semantic()
-            metrics.stop_export()
-            metrics.finish_total()
-
-            if stage:
-                self._persistent.update_job_checkpoint(job, "clean", progress=0.7)
-                if export_mode in ("ai_ready", "notebooklm", "study_mode"):
-                    self._persistent.update_job_checkpoint(job, "semantic", progress=0.85)
-                if export_mode == "study_mode":
-                    self._persistent.update_job_checkpoint(job, "study", progress=0.9)
-                if export_mode in ("notebooklm", "study_mode"):
-                    self._persistent.update_job_checkpoint(job, "notebooklm", progress=0.93)
-
-            study_exports: dict[str, str] = {}
-            if stage and stage.metadata.get("study_package"):
-                study_exports = self._write_study_exports(job.output_path, stage.metadata["study_package"])
-
-            chunks_json = ""
-            if stage and stage.metadata.get("chunks"):
-                chunks_json = json.dumps(stage.metadata["chunks"], ensure_ascii=False)
-
-            self._cache.save_pipeline_artifacts(
-                job.file_path,
-                raw_text=text,
-                stage_result_content=stage.content if stage else None,
-                stage_name=stage.pipeline_stage if stage else export_mode,
-                export_mode=export_mode,
-                template=template,
-                language=language,
-                chunks_json=chunks_json,
-                source_kind=source_kind,
-            )
-
-            job.status = JobStatus.COMPLETED
-            job.job_progress = 1.0
-            self._session_completed += 1
-            pipeline_stage = stage.pipeline_stage if stage else export_mode
-            semantic_meta: dict = stage.metadata if stage else {}
-            job.semantic_metadata = {
-                "reference_count": semantic_meta.get("reference_count", 0),
-                "highlight_count": semantic_meta.get("highlight_count", 0),
-                "chunk_count": semantic_meta.get("chunk_count", 0),
-                "topics": semantic_meta.get("topics", []),
-                "semantic_ready": semantic_meta.get("semantic_ready", False),
-            }
-            if semantic_meta.get("study_ready") or semantic_meta.get("study_package"):
-                job.study_metadata = {
-                    "study_ready": True,
-                    "flashcards_count": semantic_meta.get("flashcards_count", 0),
-                    "quizzes_count": semantic_meta.get("quizzes_count", 0),
-                    "difficulty": semantic_meta.get("difficulty", ""),
-                    "study_exports": study_exports,
-                    "study_package": semantic_meta.get("study_package", {}),
-                }
-            catalog_id, rel_summary, graph_fields = self._register_in_library(
-                job,
-                file_hash=job.file_hash or (cache_lookup.file_hash if cache_lookup.fingerprint else ""),
-                pipeline_stage=pipeline_stage,
-                stage_metadata=semantic_meta,
-            )
-
-            dataset_meta: dict = {}
-            if catalog_id and export_mode in ("ai_ready", "notebooklm", "study_mode"):
-                dataset_meta = self._update_datasets(
-                    job,
-                    catalog_id=catalog_id,
-                    stage_metadata=semantic_meta,
-                )
-                if dataset_meta:
-                    self._persistent.update_job_checkpoint(job, "dataset", progress=0.98)
-                    pipeline_stage = "dataset"
-
-            hist_fields = metrics.to_history_fields()
-            ws_name, col_name = self._library_names()
-            self.settings.add_history_entry(
-                job.file_name,
-                job.file_type,
-                status="concluído",
-                output_path=job.output_path,
-                export_mode=export_mode,
-                template_usado=template,
-                pipeline_stage=pipeline_stage,
-                tipo_documento=template,
-                referencias=str(job.semantic_metadata.get("reference_count", 0)),
-                highlights=str(job.semantic_metadata.get("highlight_count", 0)),
-                chunks=str(job.semantic_metadata.get("chunk_count", 0)),
-                topicos=", ".join(job.semantic_metadata.get("topics", [])[:5]),
-                cache_hit=hist_fields["cache_hit"],
-                recovery_used="sim" if recovery_used else "não",
-                restored_queue="sim" if self._recovery_meta.get("restored_queue") else "não",
-                processing_time=hist_fields["processing_time"],
-                reused_pipeline=hist_fields["reused_pipeline"],
-                tempo_whisper=hist_fields["tempo_whisper"],
-                tempo_ocr=hist_fields["tempo_ocr"],
-                tempo_semantic=hist_fields["tempo_semantic"],
-                workspace=ws_name,
-                collection=col_name,
-                catalog_id=catalog_id,
-                semantic_relationships=rel_summary,
-                flashcards_count=str(job.study_metadata.get("flashcards_count", "")),
-                quizzes_count=str(job.study_metadata.get("quizzes_count", "")),
-                study_mode="sim" if export_mode == "study_mode" else "",
-                difficulty=str(job.study_metadata.get("difficulty", "")),
-                study_exports=StudyExporter.paths_display(study_exports) if study_exports else "",
-                graph_node_id=graph_fields.get("graph_node_id", ""),
-                related_documents_count=graph_fields.get("related_documents_count", ""),
-                semantic_search_hits=graph_fields.get("semantic_search_hits", ""),
-                graph_updated_at=graph_fields.get("graph_updated_at", ""),
-                knowledge_readiness_score=str(dataset_meta.get("knowledge_readiness_score", "")),
-                dataset_id=dataset_meta.get("dataset_id", ""),
-            )
-            self._logger.info("Concluído: %s -> %s", job.file_name, job.output_path)
-        except Exception as exc:
-            info = classify_job_error(exc, job.file_path)
-            job.status = JobStatus.ERROR
-            job.error_message = info.user_message
-            job.error_code = info.error_code
-            job.result_text = ""
-            self._session_errors += 1
-            metrics.finish_total()
-            self.settings.add_history_entry(
-                job.file_name,
-                job.file_type,
-                status="erro",
-                message=info.user_message,
-                recovery_used="sim" if recovery_used else "não",
-            )
-            self._logger.error(
-                "Erro no job %s [%s]: %s\n%s",
-                job.file_name,
-                info.error_code,
-                info.user_message,
-                format_traceback(exc),
-            )
-
-        self._notify(job)
-        self._persist_queue(is_processing=True)
-
-    def _write_cached_export(
+    def _persist_queue(
         self,
-        job: TranscriptionJob,
-        content: str,
-        metrics: PerformanceMetrics,
-        recovery_used: bool,
+        *,
+        is_processing: Optional[bool] = None,
+        stop_requested: Optional[bool] = None,
     ) -> None:
-        output_dir = self.settings.resolve_output_dir(job.file_path)
-        fmt = self.settings.default_export_format  # type: ignore[arg-type]
-        job.output_path = ExportService.build_output_path(job.file_path, output_dir, fmt)
-        os.makedirs(os.path.dirname(os.path.abspath(job.output_path)), exist_ok=True)
-        with open(job.output_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        metrics.stop_export()
-        metrics.finish_total()
-        job.status = JobStatus.COMPLETED
-        job.job_progress = 1.0
-        self._session_completed += 1
-        catalog_id, rel_summary, graph_fields = self._register_in_library(
-            job,
-            file_hash=job.file_hash,
-            pipeline_stage="notebooklm",
-            stage_metadata=job.semantic_metadata,
-        )
-        ws_name, col_name = self._library_names()
-        self.settings.add_history_entry(
-            job.file_name,
-            job.file_type,
-            status="concluído",
-            output_path=job.output_path,
-            export_mode=self.settings.export_mode,
-            template_usado=self.settings.content_template,
-            pipeline_stage="notebooklm",
-            cache_hit="sim",
-            recovery_used="sim" if recovery_used else "não",
-            processing_time=f"{metrics.total_seconds:.2f}s",
-            reused_pipeline="sim",
-            workspace=ws_name,
-            collection=col_name,
-            catalog_id=catalog_id,
-            semantic_relationships=rel_summary,
-            graph_node_id=graph_fields.get("graph_node_id", ""),
-            related_documents_count=graph_fields.get("related_documents_count", ""),
-            semantic_search_hits=graph_fields.get("semantic_search_hits", ""),
-            graph_updated_at=graph_fields.get("graph_updated_at", ""),
-        )
-        self._notify(job)
-
-    def _library_names(self) -> tuple[str, str]:
-        lib = get_library()
-        _, ws_name = lib.resolve_workspace(self.settings.workspace_id)
-        _, col_name = lib.resolve_collection(
-            self.settings.collection_id,
-            self.settings.collection_name,
-        )
-        return ws_name, col_name
-
-    def _library_export_context(
-        self,
-        job: TranscriptionJob,
-        *,
-        semantic_metadata: dict | None = None,
-    ) -> dict:
-        lib = get_library()
-        _, ws_name = lib.resolve_workspace(self.settings.workspace_id)
-        _, col_name = lib.resolve_collection(
-            self.settings.collection_id,
-            self.settings.collection_name,
-        )
-        meta = semantic_metadata or {}
-        chunk_count = int(meta.get("chunk_count", 0))
-        topics = list(meta.get("topics") or [])
-        score = 0.0
-        if meta:
-            from src.library.catalog.catalog_registry import CatalogRegistry
-
-            score = CatalogRegistry.compute_semantic_score(
-                reference_count=int(meta.get("reference_count", 0)),
-                highlight_count=int(meta.get("highlight_count", 0)),
-                topic_count=len(topics),
-                chunk_count=chunk_count,
-            )
-        return self.settings.library_context_for_export(
-            workspace_name=ws_name,
-            collection_name=col_name,
-            semantic_score=score,
-            chunk_count=chunk_count,
-            topics=topics,
-        )
-
-    def _write_study_exports(self, output_path: str, package: dict) -> dict[str, str]:
-        try:
-            study = StudyResult.from_package(package)
-            return StudyExporter.write_exports(output_path, study)
-        except OSError as exc:
-            self._logger.warning("Exportações de estudo falharam: %s", exc)
-            return {}
-
-    def _update_datasets(
-        self,
-        job: TranscriptionJob,
-        *,
-        catalog_id: str,
-        stage_metadata: dict,
-    ) -> dict:
-        try:
-            ws_name, col_name = self._library_names()
-            engine = get_dataset_engine()
-            result = engine.build_from_document(
-                document_id=catalog_id,
-                title=os.path.splitext(job.file_name)[0],
-                source_path=job.file_path,
-                workspace=ws_name,
-                collection=col_name,
-                author=self.settings.library_author,
-                speaker=self.settings.library_speaker,
-                stage_metadata=stage_metadata,
-                semantic_metadata=job.semantic_metadata,
-                catalog_id=catalog_id,
-            )
-            DatasetExporter().export_all()
-            job.dataset_metadata = result.to_metadata()
-            return result.to_metadata()
-        except Exception as exc:
-            self._logger.warning("Atualização de datasets falhou: %s", exc)
-            return {}
-
-    def _register_in_library(
-        self,
-        job: TranscriptionJob,
-        *,
-        file_hash: str,
-        pipeline_stage: str,
-        stage_metadata: dict,
-    ) -> tuple[str, str, dict[str, str]]:
-        try:
-            if not file_hash:
-                fp = self._cache.fingerprint(job.file_path)
-                file_hash = fp.sha256
-            lib = get_library()
-            entry, _rels = lib.register_processed_document(
-                source_path=job.file_path,
-                output_path=job.output_path,
-                file_hash=file_hash,
-                workspace_id=self.settings.workspace_id,
-                collection_id=self.settings.collection_id,
-                collection_name=self.settings.collection_name,
-                speaker=self.settings.library_speaker,
-                author=self.settings.library_author,
-                tags=self.settings.parse_library_tags(),
-                category=self.settings.library_category,
-                knowledge_type=self.settings.knowledge_type,
-                export_mode=self.settings.export_mode,
-                template=self.settings.content_template,
-                pipeline_stage=pipeline_stage,
-                semantic_metadata=job.semantic_metadata,
-                stage_metadata=stage_metadata,
-            )
-            rel_summary = lib.relationships.format_for_history(entry.id)
-            graph_fields: dict[str, str] = {}
-            try:
-                from src.knowledge_graph import get_knowledge_graph
-
-                graph_fields = get_knowledge_graph().history_fields_for_document(entry.id)
-            except Exception:
-                pass
-            return entry.id, rel_summary, graph_fields
-        except Exception as exc:
-            self._logger.warning("Catalogação na biblioteca falhou: %s", exc)
-            return "", "", {}
-
-    def _safe_cache_lookup(
-        self,
-        path: str,
-        export_mode: str,
-        template: str,
-        language: str,
-    ) -> CacheLookupResult:
-        try:
-            return self._cache.lookup(
-                path, export_mode=export_mode, template=template, language=language
-            )
-        except (OSError, FileNotFoundError) as exc:
-            self._logger.warning("Cache lookup falhou: %s", exc)
-            return CacheLookupResult()
-
-    def _persist_queue(self, *, is_processing: Optional[bool] = None) -> None:
         self._persistent.save(
             self._jobs,
             selected_id=self._selected_id,
             is_processing=is_processing if is_processing is not None else self._processing,
-            stop_requested=self._stop_requested,
+            stop_requested=self._stop_requested if stop_requested is None else stop_requested,
             session_completed=self._session_completed,
             session_errors=self._session_errors,
             export_mode=self.settings.export_mode,

@@ -46,13 +46,13 @@
 | Versão UI | **3.0.3** (CortexFlow — Modo Transcritor Focado) |
 | Branch / remoto | Verificar com `git status` antes de cada tarefa |
 | Testes automatizados | Ausentes no repositório (oportunidade futura) |
-| Principal débito técnico | `QueueManager` monolítico (~825 linhas); backend “full” ainda roda pós-processamento mesmo com UI simplificada |
+| Principal débito técnico | Integrações library/graph/datasets ainda no `JobProcessor` (Fase 1b / Fase 2) |
 
 ### Fase 1 — Desacoplar o QueueManager (prioridade alta)
 
-- Extrair processamento de job para componente dedicado (ex.: `JobProcessor` / pipeline por etapas).
-- `QueueManager` responsável apenas por: fila, seleção, threading, persistência, callbacks UI.
-- Separar integrações opcionais (library, graph, datasets, study) do caminho crítico de transcrição.
+- [x] Extrair processamento de job para `src/core/job_processor.py` (`JobProcessor`, `QueueRunContext`).
+- [x] `QueueManager` (~370 linhas): fila, seleção, threading, persistência, callbacks UI; delega `JobProcessor.process()`.
+- [ ] Separar integrações opcionais (library, graph, datasets, study) do caminho crítico de transcrição → **Fase 1b** ou **Fase 2** (feature flags).
 
 ### Fase 2 — Feature flags (prioridade alta)
 
@@ -85,6 +85,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Fase 1 — Desacoplar `QueueManager` | Novo `src/core/job_processor.py` com pipeline de job (cache, Whisper/OCR, export, biblioteca); `queue_manager.py` reduzido a orquestração de fila + worker; commit `refatoração: extrair JobProcessor do QueueManager`. |
 | 2026-05-29 | Criação do `agent.md` | Fonte de verdade inicial; fases de refatoração documentadas; commit local `docs: adicionar agent.md como fonte de verdade do projeto`. |
 
 ---
