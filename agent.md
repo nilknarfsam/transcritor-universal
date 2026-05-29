@@ -47,6 +47,7 @@
 | Branch / remoto | Verificar com `git status` antes de cada tarefa |
 | Testes automatizados | `tests/test_knowledge_pipeline.py` (unittest); ampliar cobertura na Fase 4 |
 | Principal débito técnico | Tooling (pyproject/CI); contratos `Protocol` para engines (opcional) |
+| Sprint Qualidade (PEP 8 / docs / bugs) | **Concluída** — ver `docs/CODE_REVIEW_REPORT.md` |
 
 ### Fase 1 — Desacoplar o QueueManager (prioridade alta)
 
@@ -80,6 +81,14 @@
 - [x] Arquivar painéis em `src/ui/legacy_ui/` (Biblioteca, Grafo, Estudo, Datasets, Conhecimento).
 - [x] Relatório: `docs/UI_CLEANUP_REPORT.md`.
 
+### Sprint Qualidade — PEP 8, Docstrings e Bug Hunt (2026-05-29)
+
+- [x] PEP 8 e limpeza de imports em `src/core/` e `src/ui/` (fila e shell).
+- [x] Docstrings e type hints nos serviços principais (`QueueManager`, `JobProcessor`, `TranscriptionService`, etc.).
+- [x] Correções: PIL/workbook com liberação de recursos; `RLock` na fila; `unload_model()` ao fim da fila; fallback de encoding em TXT.
+- [x] Relatório: `docs/CODE_REVIEW_REPORT.md`.
+- [x] Commits locais separados (PEP8, docs, fix) — sem push.
+
 ### Fase 4 — Tooling e empacotamento (prioridade média)
 
 - `pyproject.toml` + lockfile (uv/poetry).
@@ -100,6 +109,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Sprint Qualidade — PEP 8, docs, bug hunt | Varredura `core/` + `ui/`; `RLock` na fila; `unload_model()`; PIL/XLSX/TXT; `docs/CODE_REVIEW_REPORT.md`; 3 commits locais. |
 | 2026-05-29 | Hotfix UX 3.1 — erro aos 5% | `update_job` fazia `refresh()` total a cada `on_notify` (5%); substituído por update in-place da linha. Callbacks UI protegidos em `QueueManager` + logging. FFmpeg vs FILE_NOT_FOUND corrigido em `job_errors`. Commit `fix: corrigir crash de atualização de UI aos 5% do processamento`. |
 | 2026-05-29 | Hotfix UX 3.1 — filedialog e callbacks | Modal liberava `_panel` destruído ao fechar; `refresh_history()` crashava na conclusão da fila. File dialog sem `parent` e sem defer. Commit `fix: corrigir travamento de filedialog e callbacks de UI quebrados`. |
 | 2026-05-29 | Sprint UX 3.1 — Simplificação Radical | UI 3.0.4: fila em foco, toolbar, modal de config, resultado em janela secundária, legacy_ui, `docs/UI_CLEANUP_REPORT.md`; commits locais da sprint. |

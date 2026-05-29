@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Extração de texto de documentos e OCR de imagens (sem Whisper)."""
 
-import os
+from __future__ import annotations
 
 from src.models.transcription_job import (
     DOCUMENT_EXTENSIONS,
@@ -11,7 +11,10 @@ from src.models.transcription_job import (
 
 
 class ExtractionService:
+    """Extrai texto de TXT, PDF, DOCX, XLSX e imagens via Tesseract."""
+
     def extract(self, job: TranscriptionJob, language: str = "auto") -> str:
+        """Retorna o texto extraído conforme a extensão do arquivo."""
         ext = job.extension
         path = job.file_path
 
@@ -28,12 +31,17 @@ class ExtractionService:
         raise ValueError(f"Tipo de arquivo não suportado: {ext}")
 
     def can_extract(self, job: TranscriptionJob) -> bool:
+        """Indica se o job pode ser processado por este serviço (não áudio/vídeo)."""
         return job.extension in (TEXT_EXTENSIONS | DOCUMENT_EXTENSIONS | IMAGE_EXTENSIONS)
 
     @staticmethod
     def _extract_txt(path: str) -> str:
-        with open(path, encoding="utf-8") as f:
-            return f.read().strip()
+        try:
+            with open(path, encoding="utf-8") as f:
+                return f.read().strip()
+        except UnicodeDecodeError:
+            with open(path, encoding="latin-1") as f:
+                return f.read().strip()
 
     @staticmethod
     def _extract_pdf(path: str) -> str:
@@ -54,19 +62,24 @@ class ExtractionService:
     def _extract_xlsx(path: str) -> str:
         import openpyxl
 
-        wb = openpyxl.load_workbook(path)
-        lines: list[str] = []
-        for sheet in wb.worksheets:
-            for row in sheet.iter_rows(values_only=True):
-                line = "\t".join(str(cell) if cell is not None else "" for cell in row)
-                lines.append(line)
-        return "\n".join(lines).strip()
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        try:
+            lines: list[str] = []
+            for sheet in wb.worksheets:
+                for row in sheet.iter_rows(values_only=True):
+                    line = "\t".join(
+                        str(cell) if cell is not None else "" for cell in row
+                    )
+                    lines.append(line)
+            return "\n".join(lines).strip()
+        finally:
+            wb.close()
 
     @staticmethod
     def _extract_image(path: str, language: str) -> str:
         from PIL import Image
         import pytesseract
 
-        img = Image.open(path)
         ocr_lang = language if language != "auto" else "por"
-        return pytesseract.image_to_string(img, lang=ocr_lang).strip()
+        with Image.open(path) as img:
+            return pytesseract.image_to_string(img, lang=ocr_lang).strip()

@@ -1,3 +1,5 @@
+"""Orquestração da fila de transcrição: persistência, worker thread e callbacks da UI."""
+
 from __future__ import annotations
 
 import os
@@ -10,19 +12,21 @@ from src.core.export_service import ExportService
 from src.core.job_errors import classify_job_error
 from src.core.job_processor import JobProcessor, QueueRunContext
 from src.core.log_service import get_logger
-from src.core.persistent_queue import PersistentQueue
+from src.core.persistent_queue import PersistentQueue, _utc_now
 from src.core.settings_service import SettingsService
 from src.models.transcription_job import JobStatus, TranscriptionJob
 
 
 JobCallback = Callable[[TranscriptionJob], None]
 VoidCallback = Callable[[], None]
-ProgressCallback = Callable[[float, "QueueStats"], None]
+ProgressCallback = Callable[[float, QueueStats], None]
 RecoveryCallback = Callable[[dict], None]
 
 
 @dataclass(frozen=True)
 class QueueStats:
+    """Contadores agregados da fila para a barra de status."""
+
     total: int
     waiting: int
     processing: int
@@ -61,6 +65,7 @@ class QueueManager:
     ) -> None:
         self.settings = settings
         self._jobs: list[TranscriptionJob] = []
+        self._jobs_lock = threading.RLock()
         self._selected_id: Optional[str] = None
         self._on_job_updated = on_job_updated
         self._on_queue_idle = on_queue_idle
@@ -83,7 +88,8 @@ class QueueManager:
 
     @property
     def jobs(self) -> list[TranscriptionJob]:
-        return list(self._jobs)
+        with self._jobs_lock:
+            return list(self._jobs)
 
     @property
     def is_processing(self) -> bool:
@@ -91,7 +97,7 @@ class QueueManager:
 
     @property
     def stats(self) -> QueueStats:
-        return QueueStats.from_jobs(self._jobs)
+        return QueueStats.from_jobs(self.jobs)
 
     @property
     def queue_restored(self) -> bool:
@@ -124,13 +130,22 @@ class QueueManager:
         stats = self.stats
         if not self._processing and stats.total == 0:
             return 0.0
-        eligible = stats.completed + stats.errors + stats.cancelled + stats.processing + stats.waiting
+        eligible = (
+            stats.completed
+            + stats.errors
+            + stats.cancelled
+            + stats.processing
+            + stats.waiting
+        )
         if eligible == 0:
             return 0.0
         done = stats.completed + stats.errors + stats.cancelled
         if stats.processing:
-            active = [j for j in self._jobs if j.status == JobStatus.PROCESSING]
-            partial = sum(j.job_progress for j in active) / len(active) if active else 0.5
+            with self._jobs_lock:
+                active = [j for j in self._jobs if j.status == JobStatus.PROCESSING]
+            partial = (
+                sum(j.job_progress for j in active) / len(active) if active else 0.5
+            )
             return min(0.99, (done + partial) / eligible)
         return done / eligible if eligible else 0.0
 
@@ -154,9 +169,12 @@ class QueueManager:
                 self._persistent.clear_state()
             return False
 
-        self._jobs = jobs
-        sel = str(raw.get("selected_id", "")).strip()
-        self._selected_id = sel if self._get_job(sel) else (jobs[0].id if jobs else None)
+        with self._jobs_lock:
+            self._jobs = jobs
+            sel = str(raw.get("selected_id", "")).strip()
+            self._selected_id = (
+                sel if self._get_job_unlocked(sel) else (jobs[0].id if jobs else None)
+            )
         self._session_completed = int(raw.get("session_completed", 0))
         self._session_errors = int(raw.get("session_errors", 0))
         self._recovery_meta = meta
@@ -165,8 +183,13 @@ class QueueManager:
         meta["restored_queue"] = True
         meta["recovery_used"] = True
 
-        pending = [j for j in self._jobs if j.status in (JobStatus.WAITING, JobStatus.ERROR)]
-        for job in self._jobs:
+        with self._jobs_lock:
+            pending = [
+                j for j in self._jobs
+                if j.status in (JobStatus.WAITING, JobStatus.ERROR)
+            ]
+            jobs_snapshot = list(self._jobs)
+        for job in jobs_snapshot:
             self._notify(job)
 
         self._emit_progress()
@@ -182,6 +205,7 @@ class QueueManager:
         self._persist_queue()
 
     def add_files(self, paths: list[str]) -> list[TranscriptionJob]:
+        """Adiciona arquivos válidos à fila; tipos inválidos entram como erro."""
         added: list[TranscriptionJob] = []
         for path in paths:
             path = path.strip().strip('"')
@@ -202,7 +226,8 @@ class QueueManager:
             output_dir = self.settings.resolve_output_dir(path)
             fmt = self.settings.default_export_format  # type: ignore[arg-type]
             job.output_path = ExportService.build_output_path(path, output_dir, fmt)
-            self._jobs.append(job)
+            with self._jobs_lock:
+                self._jobs.append(job)
             added.append(job)
             self._notify(job)
         self._persist_queue()
@@ -215,19 +240,21 @@ class QueueManager:
             return False
         if job.status == JobStatus.PROCESSING:
             return False
-        self._jobs = [j for j in self._jobs if j.id != job.id]
-        if self._selected_id == job.id:
-            self._selected_id = None
+        with self._jobs_lock:
+            self._jobs = [j for j in self._jobs if j.id != job.id]
+            if self._selected_id == job.id:
+                self._selected_id = None
         self._persist_queue()
         self._emit_progress()
         return True
 
     def clear_queue(self) -> None:
-        if self._processing:
-            self._jobs = [j for j in self._jobs if j.status == JobStatus.PROCESSING]
-        else:
-            self._jobs = []
-            self._selected_id = None
+        with self._jobs_lock:
+            if self._processing:
+                self._jobs = [j for j in self._jobs if j.status == JobStatus.PROCESSING]
+            else:
+                self._jobs = []
+                self._selected_id = None
         self._persist_queue()
         self._emit_progress()
 
@@ -240,7 +267,11 @@ class QueueManager:
                 self._emit_status("A fila já está em processamento.")
                 self._logger.warning("Tentativa de iniciar fila duplicada ignorada.")
                 return False
-            pending = [j for j in self._jobs if j.status in (JobStatus.WAITING, JobStatus.ERROR)]
+            with self._jobs_lock:
+                pending = [
+                    j for j in self._jobs
+                    if j.status in (JobStatus.WAITING, JobStatus.ERROR)
+                ]
             if not pending:
                 self._emit_status("Nenhum item aguardando na fila.")
                 return False
@@ -284,7 +315,9 @@ class QueueManager:
         cancelled_count = 0
         recovery_used = self._queue_restored
         try:
-            for job in list(self._jobs):
+            with self._jobs_lock:
+                jobs_snapshot = list(self._jobs)
+            for job in jobs_snapshot:
                 if self._stop_requested:
                     if job.status == JobStatus.WAITING:
                         job.status = JobStatus.CANCELLED
@@ -317,6 +350,7 @@ class QueueManager:
             self._emit_progress()
             if self._on_queue_idle:
                 self._safe_ui("on_queue_idle", self._on_queue_idle)
+            self._release_whisper_if_idle()
             msg = "Fila cancelada." if was_cancelled else "Fila finalizada."
             self._emit_status(msg)
             self._logger.info(msg)
@@ -341,9 +375,12 @@ class QueueManager:
         is_processing: Optional[bool] = None,
         stop_requested: Optional[bool] = None,
     ) -> None:
+        with self._jobs_lock:
+            jobs_copy = list(self._jobs)
+            selected_id = self._selected_id
         self._persistent.save(
-            self._jobs,
-            selected_id=self._selected_id,
+            jobs_copy,
+            selected_id=selected_id,
             is_processing=is_processing if is_processing is not None else self._processing,
             stop_requested=self._stop_requested if stop_requested is None else stop_requested,
             session_completed=self._session_completed,
@@ -353,10 +390,21 @@ class QueueManager:
         )
 
     def _get_job(self, job_id: str) -> Optional[TranscriptionJob]:
+        with self._jobs_lock:
+            return self._get_job_unlocked(job_id)
+
+    def _get_job_unlocked(self, job_id: str) -> Optional[TranscriptionJob]:
         for job in self._jobs:
             if job.id == job_id:
                 return job
         return None
+
+    def _release_whisper_if_idle(self) -> None:
+        """Libera o modelo Whisper da RAM quando a fila termina (sessões longas)."""
+        transcription = self._processor.transcription
+        if transcription.is_model_loaded:
+            self._logger.debug("Liberando modelo Whisper da memória após fim da fila.")
+            transcription.unload_model()
 
     def _safe_ui(self, label: str, fn: Callable[..., None], *args, **kwargs) -> None:
         try:
@@ -365,8 +413,6 @@ class QueueManager:
             self._logger.exception("Callback UI falhou (%s)", label)
 
     def _notify(self, job: TranscriptionJob) -> None:
-        from src.core.persistent_queue import _utc_now
-
         job.updated_at = _utc_now()
         if self._on_job_updated:
             self._safe_ui("on_job_updated", self._on_job_updated, job)
