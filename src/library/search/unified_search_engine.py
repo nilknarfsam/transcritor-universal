@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.knowledge_graph import get_knowledge_graph
-from src.library import get_library
 from src.library.catalog.catalog_registry import CatalogEntry
 from src.library.search.search_engine import SearchResult
 
@@ -78,6 +76,9 @@ class UnifiedSearchEngine:
         difficulty: str = "",
         limit: int = 60,
     ) -> UnifiedSearchResult:
+        from src.knowledge_graph import get_knowledge_graph
+        from src.library import get_library
+
         lib = get_library()
         lib.catalog.load()
         graph = get_knowledge_graph()
@@ -175,6 +176,8 @@ class UnifiedSearchEngine:
         workspace_id: str,
         collection_id: str,
     ) -> list[UnifiedSearchHit]:
+        from src.library import get_library
+
         lib = get_library()
         sem = graph.search.search(query, limit=50)
         hits: list[UnifiedSearchHit] = []

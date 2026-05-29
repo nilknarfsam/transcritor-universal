@@ -6,7 +6,6 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from src.knowledge_graph.nodes.node_builder import document_node_id, make_node_id
-from src.library import get_library
 
 if TYPE_CHECKING:
     from src.knowledge_graph.graph_engine import GraphEngine
@@ -22,6 +21,8 @@ class RelatedDocumentsFinder:
         *,
         limit: int = 12,
     ) -> list[dict[str, Any]]:
+        from src.library import get_library
+
         lib = get_library()
         source = lib.catalog.get(catalog_id)
         if not source:

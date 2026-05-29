@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 from src.core.settings_service import DATA_DIR
 from src.knowledge.dashboard_stats import compute_dashboard_stats
 from src.knowledge_graph.graph_stats import compute_graph_stats
-from src.library import get_library
 
 if TYPE_CHECKING:
     from src.knowledge_graph.graph_engine import GraphEngine
@@ -21,6 +20,8 @@ class KnowledgeReportExporter:
         self._graph = graph
 
     def render(self) -> str:
+        from src.library import get_library
+
         lib = get_library()
         lib.catalog.load()
         lib.workspaces.load()

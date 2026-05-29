@@ -16,7 +16,6 @@ from src.core.settings_service import DATA_DIR, SettingsService
 from src.knowledge_graph.edges.edge_builder import EdgeBuilder
 from src.knowledge_graph.graph_stats import compute_graph_stats
 from src.knowledge_graph.nodes.node_builder import NodeBuilder, document_node_id
-from src.library import get_library
 
 GRAPH_DIR = DATA_DIR / "knowledge_graph"
 GRAPH_FILE = GRAPH_DIR / "graph.json"
@@ -148,6 +147,8 @@ class GraphEngine:
 
     def rebuild(self, *, settings: SettingsService | None = None) -> dict[str, Any]:
         """Rebuild seguro a partir de catálogo, workspaces, coleções, histórico e exports de estudo."""
+        from src.library import get_library
+
         lib = get_library()
         lib.catalog.load()
         lib.workspaces.load()

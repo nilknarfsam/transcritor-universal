@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from src.knowledge_graph.nodes.node_builder import document_node_id, make_node_id
-from src.library import get_library
 
 if TYPE_CHECKING:
     from src.knowledge_graph.graph_engine import GraphEngine
@@ -23,6 +22,8 @@ class TopicNavigator:
 
         topic_nid = make_node_id("topic", key)
         topic_lower = key.lower()
+        from src.library import get_library
+
         lib = get_library()
 
         documents: list[dict[str, Any]] = []
