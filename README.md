@@ -28,6 +28,7 @@ Transforme conteúdos brutos (áudio, vídeo, documentos, OCR) em Markdown e for
 * **Semantic Intelligence:** referências, highlights, tópicos, índice e chunking
 * **Knowledge Library:** workspaces, coleções, catálogo e busca local na aba **Biblioteca**
 * **Study Intelligence:** flashcards, quizzes, revisão rápida e notas (modo `study_mode`)
+* **Knowledge Dataset Engine:** datasets por documento, chunks indexados e índices globais (aba **Datasets**)
 * **Knowledge Graph:** busca semântica local, documentos relacionados e navegação por tópicos (aba **Grafo / Conexões**)
 * **Premium Workspace:** busca unificada, cards de resultado, detalhe de documento e dashboard (aba **Conhecimento**)
 
@@ -71,6 +72,13 @@ src/
     difficulty/
     notes/
     study_engine.py
+  datasets/                    # Knowledge Dataset Engine
+    registry/
+    builders/
+    exporters/
+    validators/
+    statistics/
+    dataset_engine.py
   knowledge/                   # Dashboard e métricas agregadas
   knowledge_graph/             # Grafo de conhecimento e busca semântica
     nodes/
@@ -623,10 +631,92 @@ Na **Biblioteca**, use **No Workspace** para abrir o documento selecionado diret
 
 Faixa de métricas no topo do workspace:
 
-* Documentos, chunks, flashcards, quizzes, tópicos, relações
+* Documentos, datasets, readiness médio, chunks, flashcards, quizzes, tópicos, relações
 * Cache hits e tempo médio de processamento (histórico)
 
-Dados agregados de catálogo, grafo e cache local.
+Dados agregados de catálogo, grafo, datasets e cache local.
+
+---
+
+## Knowledge Dataset Engine
+
+O CortexFlow produz **datasets de conhecimento** prontos para qualquer IA — localmente, sem embeddings nem APIs externas.
+
+### Pipeline
+
+```
+RAW → CACHE CHECK → CLEAN → AI_READY → SEMANTIC → STUDY → NOTEBOOKLM → DATASET
+```
+
+Após cada processamento em modo `ai_ready`, `notebooklm` ou `study_mode`, o estágio **DATASET**:
+
+* Gera um **knowledge dataset** por documento (tópicos, referências, chunks, flashcards, quizzes, metadados)
+* Gera **chunk datasets** independentes por bloco semântico
+* Reconstrói **índices globais** (tópicos, referências, autores, speakers, coleções, workspaces)
+* Atualiza catálogo e grafo (fluxo existente) e persiste em `data/datasets/`
+
+### Artefatos (`data/datasets/`)
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `knowledge_datasets.json` | Datasets completos por documento |
+| `chunk_datasets.json` | Registros por chunk |
+| `knowledge_index.json` | Índices globais |
+| `dataset_statistics.json` | Métricas agregadas |
+| `dataset_validation_report.json` | Relatório de validação |
+
+Cada registro inclui `created_at`, `updated_at`, `source_document` e `dataset_version`.
+
+---
+
+## Dataset Explorer
+
+Aba **Datasets** no app:
+
+* Lista datasets gerados com documento associado, chunks, versão e estatísticas
+* **Abrir pasta** `data/datasets/`
+* **Exportar dataset** (cópia JSON)
+* **Validar datasets** (campos obrigatórios, IDs únicos, integridade de chunks e referências)
+
+---
+
+## Dataset Validation
+
+O validador (`DatasetValidator`) verifica:
+
+* Campos obrigatórios em knowledge e chunk datasets
+* IDs únicos (`dataset_id`, `chunk_id`)
+* Integridade de chunks referenciados
+* Integridade de referências e índices
+
+O relatório é salvo em `dataset_validation_report.json`.
+
+---
+
+## Knowledge Readiness Score
+
+Pontuação **0–100** (`knowledge_readiness_score`) por documento, com base em:
+
+* Metadados e título
+* Chunks semânticos
+* Tópicos e referências
+* Flashcards e quizzes (modo study)
+* Workspace, coleção, autor/speaker e highlights
+
+Exibido no **Dataset Explorer** e no **Knowledge Dashboard** (card Readiness).
+
+---
+
+## Preparação para RAG
+
+Os datasets e índices são a camada de dados **determinística** antes de vetorização futura:
+
+* **Chunks** com `chunk_id`, tópicos e conteúdo — prontos para embedding offline posterior
+* **Índices invertidos** por tópico, referência, autor e coleção — navegação e filtros sem vector DB
+* **NotebookLM / GPT Projects:** export Markdown + JSON estruturado lado a lado
+* **Knowledge Graphs:** IDs estáveis ligando documentos, chunks e materiais de estudo
+
+Nenhum embedding, vector database ou API externa é usado nesta versão — o foco é **produzir dados perfeitos para IA**.
 
 ---
 
