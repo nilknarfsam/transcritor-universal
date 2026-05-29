@@ -7,7 +7,6 @@ from typing import Callable, Optional
 import customtkinter as ctk
 
 from src.core.settings_service import SettingsService
-from src.library import get_library
 from src.ui.design.fonts import APP_NAME, APP_TAGLINE, APP_VERSION, body_small, caption, mono, panel_title
 from src.ui.design.spacing import Layout
 from src.ui.design.theme_manager import ThemeManager
@@ -143,6 +142,7 @@ class AppSettingsPanel(ctk.CTkFrame):
         self.scroll.grid_columnconfigure(0, weight=1)
 
         self._advanced_visible = False
+        self._library_controls_built = False
         self._build_controls()
         self._build_output_folder()
         self._build_advanced_section()
@@ -317,6 +317,27 @@ class AppSettingsPanel(ctk.CTkFrame):
         ).grid(row=arow, column=0, sticky="w", pady=(0, Layout.MD))
         arow += 1
 
+        self._library_advanced_host = ctk.CTkFrame(adv, fg_color="transparent")
+        self._library_advanced_host.grid(row=arow, column=0, sticky="ew")
+        self._library_advanced_host.grid_columnconfigure(0, weight=1)
+        if self.settings.knowledge_pipeline:
+            self._build_library_advanced_controls()
+            self._library_controls_built = True
+
+        self._advanced_row_end = row
+
+    def _ensure_library_advanced_controls(self) -> None:
+        if self._library_controls_built:
+            return
+        self._build_library_advanced_controls()
+        self._library_controls_built = True
+
+    def _build_library_advanced_controls(self) -> None:
+        from src.library import get_library
+
+        adv = self._library_advanced_host
+        arow = 0
+
         lib = get_library()
         ws_pairs = lib.workspaces.list_names()
         ws_labels = [name for _, name in ws_pairs]
@@ -413,11 +434,10 @@ class AppSettingsPanel(ctk.CTkFrame):
             justify="left",
         ).grid(row=arow + 2, column=0, sticky="w", pady=(0, Layout.SM))
 
-        self._advanced_row_end = row
-
     def _toggle_advanced(self) -> None:
         self._advanced_visible = not self._advanced_visible
         if self._advanced_visible:
+            self._ensure_library_advanced_controls()
             self.advanced_frame.grid()
             self.advanced_toggle_btn.configure(text="Ocultar configurações avançadas")
         else:
@@ -471,6 +491,8 @@ class AppSettingsPanel(ctk.CTkFrame):
 
     def _toggle_knowledge_pipeline(self) -> None:
         self.settings.knowledge_pipeline = bool(self.knowledge_pipeline_chk.get())
+        if self.settings.knowledge_pipeline and self._advanced_visible:
+            self._ensure_library_advanced_controls()
         self._notify_change()
 
     def _change_template(self, value: str) -> None:
@@ -479,6 +501,8 @@ class AppSettingsPanel(ctk.CTkFrame):
 
     def _change_workspace(self, value: str) -> None:
         if hasattr(self, "_workspace_ids") and value:
+            from src.library import get_library
+
             lib = get_library()
             for ws_id, name in lib.workspaces.list_names():
                 if name == value:
@@ -489,6 +513,8 @@ class AppSettingsPanel(ctk.CTkFrame):
     def _change_collection(self, value: str) -> None:
         if value == "(nova…)":
             return
+        from src.library import get_library
+
         lib = get_library()
         col = lib.collections.get_by_name(value)
         if col:

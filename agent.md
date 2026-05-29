@@ -45,8 +45,8 @@
 |------|--------|
 | Versão UI | **3.0.3** (CortexFlow — Modo Transcritor Focado) |
 | Branch / remoto | Verificar com `git status` antes de cada tarefa |
-| Testes automatizados | Ausentes no repositório (oportunidade futura) |
-| Principal débito técnico | Testes automatizados ausentes; extrair pós-processamento para módulo dedicado (opcional) |
+| Testes automatizados | `tests/test_knowledge_pipeline.py` (unittest); ampliar cobertura na Fase 4 |
+| Principal débito técnico | Tooling (pyproject/CI); contratos `Protocol` para engines (opcional) |
 
 ### Fase 1 — Desacoplar o QueueManager (prioridade alta)
 
@@ -61,10 +61,12 @@
 - [x] Modos `ai_ready`, `notebooklm`, `study_mode` ativam pipeline temporariamente se a flag estiver desligada; aviso na UI ao selecionar o modo.
 - [x] Checkbox em Configurações avançadas para ligar o pipeline de forma persistente.
 
-### Fase 3 — Contratos e testes (prioridade média)
+### Fase 3 — Testes básicos e otimização de boot (prioridade média)
 
-- `Protocol` / interfaces para `TranscriptionEngine`, `TextExtractor`, estágios de export.
-- Testes unitários: `export_service`, `job_errors`, cache lookup, serialização da fila.
+- [x] Testes unitários (`unittest`): `tests/test_knowledge_pipeline.py` — `should_run_knowledge_pipeline`, modos de exportação, flag on/off.
+- [x] Lazy loading de `get_library()` na UI: controles de biblioteca só ao abrir configurações avançadas (ou se `knowledge_pipeline` já estiver `true` no boot).
+- [ ] Contratos `Protocol` para `TranscriptionEngine`, `TextExtractor`, estágios de export (opcional / fase posterior).
+- [ ] Testes adicionais: `export_service`, `job_errors`, cache lookup, serialização da fila.
 
 ### Fase 4 — Tooling e empacotamento (prioridade média)
 
@@ -86,6 +88,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Fase 3 — Testes e boot | `tests/test_knowledge_pipeline.py`; lazy load de biblioteca em `settings_panel.py`; commit `refatoração: testes knowledge_pipeline e lazy boot (Fase 3)`. |
 | 2026-05-29 | Fase 2 — Feature flags | `features.knowledge_pipeline` (default false); pós-processamento condicional no `JobProcessor`; aviso + checkbox na UI; commit `refatoração: feature flag knowledge_pipeline (Fase 2)`. |
 | 2026-05-29 | Fase 1 — Desacoplar `QueueManager` | Novo `src/core/job_processor.py` com pipeline de job (cache, Whisper/OCR, export, biblioteca); `queue_manager.py` reduzido a orquestração de fila + worker; commit `refatoração: extrair JobProcessor do QueueManager`. |
 | 2026-05-29 | Criação do `agent.md` | Fonte de verdade inicial; fases de refatoração documentadas; commit local `docs: adicionar agent.md como fonte de verdade do projeto`. |
@@ -97,4 +100,5 @@ Registro cronológico (mais recente no topo).
 - Documentação do produto: `README.md`, `CHANGELOG.md`
 - Dependências Python: `requirements.txt`
 - Dados em runtime: `data/` (settings, fila, cache, logs, library, datasets, knowledge_graph)
+- Testes: `python -m unittest discover -s tests -v`
 - Relatório de arquitetura: conversa inicial de análise estrutural (maio/2026) — resumo incorporado nas fases acima.
