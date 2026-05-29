@@ -13,7 +13,10 @@ from src.core.log_service import get_logger
 from src.core.performance_metrics import PerformanceMetrics
 from src.core.persistent_queue import PersistentQueue
 from src.core.settings_service import SettingsService
-from src.core.transcription_service import TranscriptionService
+from src.core.transcription_service import (
+    TranscriptionService,
+    map_whisper_fraction_to_job,
+)
 from src.datasets.dataset_engine import get_dataset_engine
 from src.datasets.exporters.dataset_exporter import DatasetExporter
 from src.library import get_library
@@ -236,6 +239,7 @@ class JobProcessor:
                 model_name=model_name,
                 export_mode=export_mode,
                 template=template,
+                ctx=ctx,
             )
 
         return text, source_kind, reused
@@ -250,15 +254,26 @@ class JobProcessor:
         model_name: str,
         export_mode: str,
         template: str,
+        ctx: QueueRunContext,
     ) -> tuple[str, str]:
         """Transcrição Whisper ou extração de documento/imagem; persiste estágio no cache."""
         if ext in (AUDIO_EXTENSIONS | VIDEO_EXTENSIONS):
             metrics.start_whisper()
+
+            def _on_whisper_progress(whisper_fraction: float) -> None:
+                job.job_progress = map_whisper_fraction_to_job(whisper_fraction)
+                ctx.on_notify(job)
+
             text = self._transcription.transcribe_media(
-                job.file_path, language=language, model_name=model_name
+                job.file_path,
+                language=language,
+                model_name=model_name,
+                on_whisper_progress=_on_whisper_progress,
             )
             metrics.stop_whisper()
             source_kind = "whisper"
+            job.job_progress = map_whisper_fraction_to_job(1.0)
+            ctx.on_notify(job)
             self._persistent.update_job_checkpoint(job, "whisper", progress=0.45)
             self._cache.save_stage(
                 job.file_path,

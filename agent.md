@@ -95,11 +95,13 @@
 - CI mínimo (lint + testes).
 - Limpar artefatos na raiz do repo (ffmpeg/tesseract zip, histórico legado duplicado).
 
-### Fase 5 — Melhorias operacionais (prioridade baixa)
+### Fase 5 — UX de Processamento e Formatação de Saída
 
-- CLI opcional reutilizando o mesmo `JobProcessor`.
-- Progresso real do Whisper (callbacks) vs. marcos fixos de `job_progress`.
-- Paralelismo seletivo para jobs leves (documentos) — com cuidado em GPU/RAM do Whisper.
+- [x] Transcrição Whisper com parágrafos timestampados (`**[MM:SS]**`) a partir de `segments`.
+- [x] Progresso real via captura de tqdm em `sys.stderr` (job 5% → 90% durante Whisper).
+- [x] Testes: `tests/test_transcription_format.py`.
+- [ ] CLI opcional reutilizando o mesmo `JobProcessor`.
+- [ ] Paralelismo seletivo para jobs leves (documentos) — com cuidado em GPU/RAM do Whisper.
 
 ---
 

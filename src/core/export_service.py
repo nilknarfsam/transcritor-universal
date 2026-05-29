@@ -21,7 +21,8 @@ class ExportService:
         if fmt == "json":
             return json.dumps({"transcricao": text}, ensure_ascii=False, indent=2)
         if fmt == "md":
-            return f"# Transcrição\n\n{text}"
+            body = text.strip() if text.strip() else "_Sem conteúdo._"
+            return f"# Transcrição\n\n{body}\n"
         return text
 
     @staticmethod
