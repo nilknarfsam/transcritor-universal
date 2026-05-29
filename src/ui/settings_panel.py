@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tkinter.filedialog as fd
+import tkinter.messagebox as mb
 from typing import Callable, Optional
 
 import customtkinter as ctk
@@ -291,6 +292,31 @@ class AppSettingsPanel(ctk.CTkFrame):
         adv = self.advanced_frame
         arow = 1
 
+        self.knowledge_pipeline_chk = ctk.CTkCheckBox(
+            adv,
+            text="Pipeline de conhecimento (biblioteca, grafo, datasets)",
+            command=self._toggle_knowledge_pipeline,
+        )
+        if self.settings.knowledge_pipeline:
+            self.knowledge_pipeline_chk.select()
+        else:
+            self.knowledge_pipeline_chk.deselect()
+        self.knowledge_pipeline_chk.grid(row=arow, column=0, sticky="w", pady=(0, Layout.SM))
+        arow += 1
+
+        ctk.CTkLabel(
+            adv,
+            text=(
+                "Desligado por padrão no modo transcritor. Modos NotebookLM, AI Ready e Study Mode "
+                "ativam o pipeline automaticamente ao processar, se esta opção estiver desmarcada."
+            ),
+            font=caption(),
+            text_color=self.theme.colors()["text_muted"],
+            wraplength=520,
+            justify="left",
+        ).grid(row=arow, column=0, sticky="w", pady=(0, Layout.MD))
+        arow += 1
+
         lib = get_library()
         ws_pairs = lib.workspaces.list_names()
         ws_labels = [name for _, name in ws_pairs]
@@ -431,7 +457,20 @@ class AppSettingsPanel(ctk.CTkFrame):
         self._notify_change()
 
     def _change_export_mode(self, value: str) -> None:
+        if self.settings.export_mode_needs_knowledge_pipeline(value) and not self.settings.knowledge_pipeline:
+            mb.showwarning(
+                "Pipeline de conhecimento",
+                "Os modos «AI Ready», «NotebookLM» e «Study Mode» ativam temporariamente "
+                "a catalogação na biblioteca, atualização do grafo e geração de datasets "
+                "durante o processamento.\n\n"
+                "Para manter esse comportamento em todos os modos, marque "
+                "«Pipeline de conhecimento» em Configurações avançadas.",
+            )
         self.settings.export_mode = value
+        self._notify_change()
+
+    def _toggle_knowledge_pipeline(self) -> None:
+        self.settings.knowledge_pipeline = bool(self.knowledge_pipeline_chk.get())
         self._notify_change()
 
     def _change_template(self, value: str) -> None:

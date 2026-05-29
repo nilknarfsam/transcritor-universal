@@ -12,6 +12,13 @@ SETTINGS_FILE = DATA_DIR / "settings.json"
 HISTORY_FILE = DATA_DIR / "historico_transcricoes.json"
 LEGACY_HISTORY_FILE = PROJECT_ROOT / "historico_transcricoes.json"
 
+# Modos cujo pós-processamento (biblioteca, grafo, datasets) exige pipeline de conhecimento.
+EXPORT_MODES_REQUIRING_KNOWLEDGE = frozenset({"notebooklm", "study_mode", "ai_ready"})
+
+DEFAULT_FEATURES: dict[str, Any] = {
+    "knowledge_pipeline": False,
+}
+
 DEFAULT_SETTINGS: dict[str, Any] = {
     "theme": "System",
     "language": "auto",
@@ -37,12 +44,14 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "ui_search_filter_template": "(todos)",
     "ui_search_filter_export_mode": "(todos)",
     "ui_search_filter_difficulty": "(todos)",
+    "features": dict(DEFAULT_FEATURES),
 }
 
 
 class SettingsService:
     def __init__(self) -> None:
         self._settings = dict(DEFAULT_SETTINGS)
+        self._settings["features"] = dict(DEFAULT_FEATURES)
         self._history: list[dict[str, str]] = []
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self._migrate_legacy_history()
@@ -57,10 +66,33 @@ class SettingsService:
             try:
                 with open(SETTINGS_FILE, encoding="utf-8") as f:
                     loaded = json.load(f)
-                self._settings.update({k: loaded[k] for k in DEFAULT_SETTINGS if k in loaded})
+                self._apply_loaded_settings(loaded)
             except (json.JSONDecodeError, OSError):
                 pass
+        else:
+            self._ensure_features_defaults()
         self._history = self._load_history_file()
+
+    def _ensure_features_defaults(self) -> None:
+        if "features" not in self._settings or not isinstance(self._settings["features"], dict):
+            self._settings["features"] = dict(DEFAULT_FEATURES)
+        else:
+            for key, default in DEFAULT_FEATURES.items():
+                self._settings["features"].setdefault(key, default)
+
+    def _apply_loaded_settings(self, loaded: dict[str, Any]) -> None:
+        for key, default in DEFAULT_SETTINGS.items():
+            if key not in loaded:
+                continue
+            if key == "features" and isinstance(loaded["features"], dict):
+                merged = dict(DEFAULT_FEATURES)
+                merged.update(
+                    {fk: loaded["features"][fk] for fk in DEFAULT_FEATURES if fk in loaded["features"]}
+                )
+                self._settings["features"] = merged
+            else:
+                self._settings[key] = loaded[key]
+        self._ensure_features_defaults()
 
     def save_settings(self) -> None:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -211,6 +243,40 @@ class SettingsService:
     def library_tags(self, value: str) -> None:
         self._settings["library_tags"] = value
         self.save_settings()
+
+    @property
+    def features(self) -> dict[str, Any]:
+        self._ensure_features_defaults()
+        return self._settings["features"]
+
+    @property
+    def knowledge_pipeline(self) -> bool:
+        self._ensure_features_defaults()
+        return bool(self._settings["features"].get("knowledge_pipeline", False))
+
+    @knowledge_pipeline.setter
+    def knowledge_pipeline(self, value: bool) -> None:
+        self._ensure_features_defaults()
+        self._settings["features"]["knowledge_pipeline"] = bool(value)
+        self.save_settings()
+
+    def export_mode_needs_knowledge_pipeline(self, export_mode: str | None = None) -> bool:
+        """Modos avançados que dependem de biblioteca / grafo / datasets."""
+        mode = (export_mode or self.export_mode).lower().strip()
+        return mode in EXPORT_MODES_REQUIRING_KNOWLEDGE
+
+    def knowledge_pipeline_auto_enabled(self, export_mode: str | None = None) -> bool:
+        """True quando o modo de exportação liga o pipeline sem a flag persistida."""
+        return (
+            not self.knowledge_pipeline
+            and self.export_mode_needs_knowledge_pipeline(export_mode)
+        )
+
+    def should_run_knowledge_pipeline(self, export_mode: str | None = None) -> bool:
+        """Executar catalogação, grafo e datasets (flag persistida ou modo avançado)."""
+        if self.knowledge_pipeline:
+            return True
+        return self.export_mode_needs_knowledge_pipeline(export_mode)
 
     @property
     def knowledge_type(self) -> str:

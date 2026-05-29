@@ -405,23 +405,16 @@ class JobProcessor:
                 "study_package": semantic_meta.get("study_package", {}),
             }
 
-        catalog_id, rel_summary, graph_fields = self._register_in_library(
+        catalog_id, rel_summary, graph_fields, dataset_meta = self._run_knowledge_post_processing(
             job,
+            export_mode=export_mode,
             file_hash=job.file_hash or (cache_lookup.file_hash if cache_lookup.fingerprint else ""),
             pipeline_stage=pipeline_stage,
             stage_metadata=semantic_meta,
         )
-
-        dataset_meta: dict = {}
-        if catalog_id and export_mode in ("ai_ready", "notebooklm", "study_mode"):
-            dataset_meta = self._update_datasets(
-                job,
-                catalog_id=catalog_id,
-                stage_metadata=semantic_meta,
-            )
-            if dataset_meta:
-                self._persistent.update_job_checkpoint(job, "dataset", progress=0.98)
-                pipeline_stage = "dataset"
+        if dataset_meta:
+            self._persistent.update_job_checkpoint(job, "dataset", progress=0.98)
+            pipeline_stage = "dataset"
 
         hist_fields = metrics.to_history_fields()
         ws_name, col_name = self._library_names()
@@ -482,8 +475,9 @@ class JobProcessor:
         job.status = JobStatus.COMPLETED
         job.job_progress = 1.0
         ctx.on_completed()
-        catalog_id, rel_summary, graph_fields = self._register_in_library(
+        catalog_id, rel_summary, graph_fields, _dataset_meta = self._run_knowledge_post_processing(
             job,
+            export_mode="notebooklm",
             file_hash=job.file_hash,
             pipeline_stage="notebooklm",
             stage_metadata=job.semantic_metadata,
@@ -511,6 +505,47 @@ class JobProcessor:
             graph_updated_at=graph_fields.get("graph_updated_at", ""),
         )
         ctx.on_notify(job)
+
+    def _run_knowledge_post_processing(
+        self,
+        job: TranscriptionJob,
+        *,
+        export_mode: str,
+        file_hash: str,
+        pipeline_stage: str,
+        stage_metadata: dict,
+    ) -> tuple[str, str, dict[str, str], dict]:
+        """Catalogação, grafo e datasets — somente se ``features.knowledge_pipeline`` ou modo avançado."""
+        if not self.settings.should_run_knowledge_pipeline(export_mode):
+            self._logger.debug(
+                "Pipeline de conhecimento ignorado (modo=%s, flag=%s).",
+                export_mode,
+                self.settings.knowledge_pipeline,
+            )
+            return "", "", {}, {}
+
+        if self.settings.knowledge_pipeline_auto_enabled(export_mode):
+            self._logger.info(
+                "Pipeline de conhecimento ativado temporariamente para modo %s.",
+                export_mode,
+            )
+
+        catalog_id, rel_summary, graph_fields = self._register_in_library(
+            job,
+            file_hash=file_hash,
+            pipeline_stage=pipeline_stage,
+            stage_metadata=stage_metadata,
+        )
+
+        dataset_meta: dict = {}
+        if catalog_id and export_mode in ("ai_ready", "notebooklm", "study_mode"):
+            dataset_meta = self._update_datasets(
+                job,
+                catalog_id=catalog_id,
+                stage_metadata=stage_metadata,
+            )
+
+        return catalog_id, rel_summary, graph_fields, dataset_meta
 
     def _library_names(self) -> tuple[str, str]:
         lib = get_library()

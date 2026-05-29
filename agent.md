@@ -46,19 +46,20 @@
 | Versão UI | **3.0.3** (CortexFlow — Modo Transcritor Focado) |
 | Branch / remoto | Verificar com `git status` antes de cada tarefa |
 | Testes automatizados | Ausentes no repositório (oportunidade futura) |
-| Principal débito técnico | Integrações library/graph/datasets ainda no `JobProcessor` (Fase 1b / Fase 2) |
+| Principal débito técnico | Testes automatizados ausentes; extrair pós-processamento para módulo dedicado (opcional) |
 
 ### Fase 1 — Desacoplar o QueueManager (prioridade alta)
 
 - [x] Extrair processamento de job para `src/core/job_processor.py` (`JobProcessor`, `QueueRunContext`).
 - [x] `QueueManager` (~370 linhas): fila, seleção, threading, persistência, callbacks UI; delega `JobProcessor.process()`.
-- [ ] Separar integrações opcionais (library, graph, datasets, study) do caminho crítico de transcrição → **Fase 1b** ou **Fase 2** (feature flags).
+- [x] Pós-processamento de conhecimento condicionado por feature flag (Fase 2).
 
 ### Fase 2 — Feature flags (prioridade alta)
 
-- Configuração (ex. em `data/settings.json` ou constantes) para desligar pipeline de conhecimento no modo focado.
-- Ex.: `features.knowledge_pipeline: false` → não catalogar / grafo / datasets ao concluir job.
-- Boot e pós-processamento alinhados à UI 3.0.3.
+- [x] `features.knowledge_pipeline` em `data/settings.json` (padrão `false`) via `SettingsService`.
+- [x] `JobProcessor._run_knowledge_post_processing` — biblioteca, grafo e datasets só se `should_run_knowledge_pipeline()`.
+- [x] Modos `ai_ready`, `notebooklm`, `study_mode` ativam pipeline temporariamente se a flag estiver desligada; aviso na UI ao selecionar o modo.
+- [x] Checkbox em Configurações avançadas para ligar o pipeline de forma persistente.
 
 ### Fase 3 — Contratos e testes (prioridade média)
 
@@ -85,6 +86,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Fase 2 — Feature flags | `features.knowledge_pipeline` (default false); pós-processamento condicional no `JobProcessor`; aviso + checkbox na UI; commit `refatoração: feature flag knowledge_pipeline (Fase 2)`. |
 | 2026-05-29 | Fase 1 — Desacoplar `QueueManager` | Novo `src/core/job_processor.py` com pipeline de job (cache, Whisper/OCR, export, biblioteca); `queue_manager.py` reduzido a orquestração de fila + worker; commit `refatoração: extrair JobProcessor do QueueManager`. |
 | 2026-05-29 | Criação do `agent.md` | Fonte de verdade inicial; fases de refatoração documentadas; commit local `docs: adicionar agent.md como fonte de verdade do projeto`. |
 

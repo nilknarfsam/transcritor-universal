@@ -1,6 +1,7 @@
 """Pipeline AI-ready — RAW → CACHE CHECK → CLEAN → AI_READY → SEMANTIC → STUDY → NOTEBOOKLM → DATASET.
 
 CACHE CHECK: ``QueueManager`` / ``CacheEngine``. STUDY: modo ``study_mode``. DATASET: ``DatasetEngine``.
+Pós-processamento (biblioteca, grafo, datasets): ``JobProcessor`` + ``features.knowledge_pipeline``.
 """
 
 from __future__ import annotations
