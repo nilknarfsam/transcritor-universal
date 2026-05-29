@@ -11,7 +11,7 @@
 
 - **Processamento:** 100% local — **OpenAI Whisper** (áudio/vídeo), **pdfplumber / python-docx / openpyxl** (documentos), **Tesseract** via **pytesseract** (imagens). Sem APIs externas de IA.
 - **Interface:** GUI **CustomTkinter** + drag-and-drop (`tkinterdnd2`). Entrada: `app.py` (alias legado: `app_transcricao.py`).
-- **Versão atual da UI:** **3.0.3 — Modo Transcritor Focado** — apenas **Transcrição** e **Configurações** na interface; módulos avançados (Biblioteca, Grafo, Estudo, Datasets, Conhecimento) permanecem no código-fonte mas não são montados na janela principal.
+- **Versão atual da UI:** **3.0.4 — Simplificação Radical** — fila de transcrição como foco absoluto (~85% da área); toolbar superior com ações em lote; configurações em modal; resultado em janela secundária. Painéis avançados arquivados em `src/ui/legacy_ui/`.
 - **Orquestração:** fila persistente (`data/queue_state.json`), cache SHA256 (`src/cache/`), histórico e settings em `data/`.
 - **Arquivos centrais do motor:**
   - `src/core/queue_manager.py` — orquestra fila, cache, export e pós-processamento (biblioteca, grafo, datasets).
@@ -43,7 +43,7 @@
 
 | Item | Valor |
 |------|--------|
-| Versão UI | **3.0.3** (CortexFlow — Modo Transcritor Focado) |
+| Versão UI | **3.0.4** (CortexFlow — Simplificação Radical / Fila em foco) |
 | Branch / remoto | Verificar com `git status` antes de cada tarefa |
 | Testes automatizados | `tests/test_knowledge_pipeline.py` (unittest); ampliar cobertura na Fase 4 |
 | Principal débito técnico | Tooling (pyproject/CI); contratos `Protocol` para engines (opcional) |
@@ -68,6 +68,18 @@
 - [ ] Contratos `Protocol` para `TranscriptionEngine`, `TextExtractor`, estágios de export (opcional / fase posterior).
 - [ ] Testes adicionais: `export_service`, `job_errors`, cache lookup, serialização da fila.
 
+### Sprint UX 3.1 — Simplificação Radical da Interface
+
+- [x] Remover sidebar (`BrandSidebar`) e header de marca da tela principal.
+- [x] Toolbar superior: Adicionar, Remover, Limpar, Iniciar, Cancelar, Abrir Pasta, Configurações.
+- [x] Fila como elemento principal (~85% da área) com colunas: Arquivo, Tipo, Status, Progresso, Saída, Tempo.
+- [x] Detalhes compactos do item (Nome, Status, Cache, Saída).
+- [x] Remover `ResultPanel` embutido; botão «Visualizar Resultado» abre `ResultViewerWindow`.
+- [x] Configurações em modal (`SettingsModal`); avançadas recolhidas.
+- [x] Status bar: Total | Aguardando | Processando | Concluídos | Erros.
+- [x] Arquivar painéis em `src/ui/legacy_ui/` (Biblioteca, Grafo, Estudo, Datasets, Conhecimento).
+- [x] Relatório: `docs/UI_CLEANUP_REPORT.md`.
+
 ### Fase 4 — Tooling e empacotamento (prioridade média)
 
 - `pyproject.toml` + lockfile (uv/poetry).
@@ -88,6 +100,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-29 | Sprint UX 3.1 — Simplificação Radical | UI 3.0.4: fila em foco, toolbar, modal de config, resultado em janela secundária, legacy_ui, `docs/UI_CLEANUP_REPORT.md`; commits locais da sprint. |
 | 2026-05-29 | Fase 3 — Testes e boot | `tests/test_knowledge_pipeline.py`; lazy load de biblioteca em `settings_panel.py`; commit `refatoração: testes knowledge_pipeline e lazy boot (Fase 3)`. |
 | 2026-05-29 | Fase 2 — Feature flags | `features.knowledge_pipeline` (default false); pós-processamento condicional no `JobProcessor`; aviso + checkbox na UI; commit `refatoração: feature flag knowledge_pipeline (Fase 2)`. |
 | 2026-05-29 | Fase 1 — Desacoplar `QueueManager` | Novo `src/core/job_processor.py` com pipeline de job (cache, Whisper/OCR, export, biblioteca); `queue_manager.py` reduzido a orquestração de fila + worker; commit `refatoração: extrair JobProcessor do QueueManager`. |
