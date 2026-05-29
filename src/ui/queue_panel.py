@@ -276,9 +276,10 @@ class QueuePanel(ctk.CTkFrame):
 
         self.btn_start = ctk.CTkButton(
             actions,
-            text="Iniciar transcrição",
-            width=180,
-            height=36,
+            text="INICIAR TRANSCRIÇÃO",
+            width=220,
+            height=42,
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._start_queue,
             **self.theme.primary_button_kwargs(),
         )
