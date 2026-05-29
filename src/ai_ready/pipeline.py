@@ -1,4 +1,7 @@
-"""Pipeline AI-ready — orquestração de estágios e exportação."""
+"""Pipeline AI-ready — RAW → CACHE CHECK → CLEAN → AI_READY → SEMANTIC → NOTEBOOKLM.
+
+O estágio CACHE CHECK é executado em ``QueueManager`` via ``CacheEngine`` antes da exportação.
+"""
 
 from __future__ import annotations
 
