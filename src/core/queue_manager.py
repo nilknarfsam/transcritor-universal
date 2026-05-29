@@ -19,7 +19,7 @@ from src.models.transcription_job import JobStatus, TranscriptionJob
 
 JobCallback = Callable[[TranscriptionJob], None]
 VoidCallback = Callable[[], None]
-ProgressCallback = Callable[[float, QueueStats], None]
+ProgressCallback = Callable[[float, "QueueStats"], None]
 RecoveryCallback = Callable[[dict], None]
 
 
