@@ -23,6 +23,7 @@ class LibraryPanel(ctk.CTkFrame):
         theme: ThemeManager,
         on_status: Optional[Callable[[str], None]] = None,
         on_show_related: Optional[Callable[[str, str], None]] = None,
+        on_open_workspace: Optional[Callable[[str], None]] = None,
         **kwargs,
     ) -> None:
         super().__init__(master, **kwargs)
@@ -30,6 +31,7 @@ class LibraryPanel(ctk.CTkFrame):
         self.theme = theme
         self.on_status = on_status
         self.on_show_related = on_show_related
+        self.on_open_workspace = on_open_workspace
         self._library = get_library()
         self._graph = get_knowledge_graph()
         self._selected_id: Optional[str] = None
@@ -190,6 +192,14 @@ class LibraryPanel(ctk.CTkFrame):
 
         ctk.CTkButton(
             actions,
+            text="No Workspace",
+            width=110,
+            command=self._open_in_workspace,
+            **self.theme.ghost_button_kwargs(),
+        ).pack(side="left", padx=(0, Layout.SM))
+
+        ctk.CTkButton(
+            actions,
             text="Atualizar",
             width=100,
             command=self.refresh,
@@ -322,6 +332,14 @@ class LibraryPanel(ctk.CTkFrame):
         self._render_connected_results(result.documents, result.chunks, result.topics)
         if self.on_status:
             self.on_status(f"Busca semântica: {result.total_hits} hit(s).")
+
+    def _open_in_workspace(self) -> None:
+        if not self._selected_id:
+            if self.on_status:
+                self.on_status("Selecione um documento na biblioteca.")
+            return
+        if self.on_open_workspace:
+            self.on_open_workspace(self._selected_id)
 
     def _show_related(self) -> None:
         if not self._selected_id:

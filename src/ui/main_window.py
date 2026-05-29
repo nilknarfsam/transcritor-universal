@@ -16,6 +16,7 @@ from src.ui.design.fonts import APP_NAME, APP_TAGLINE, APP_VERSION, badge, brand
 from src.ui.design.spacing import Layout
 from src.ui.design.theme_manager import ThemeManager
 from src.ui.graph_panel import GraphPanel
+from src.ui.knowledge_workspace_panel import KnowledgeWorkspacePanel
 from src.ui.library_panel import LibraryPanel
 from src.ui.study_panel import StudyPanel
 from src.ui.queue_panel import QueuePanel
@@ -88,6 +89,7 @@ class MainWindow:
         self.main_tabs = ctk.CTkTabview(center, fg_color="transparent")
         self.main_tabs.grid(row=0, column=0, sticky="nsew")
         self.main_tabs.add("Pipeline")
+        self.main_tabs.add("Conhecimento")
         self.main_tabs.add("Biblioteca")
         self.main_tabs.add("Grafo / Conexões")
         self.main_tabs.add("Estudo")
@@ -105,6 +107,19 @@ class MainWindow:
         self.queue_panel.grid(row=0, column=0, sticky="nsew")
         self.queue_panel.set_add_files_handler(self.add_files_dialog)
         self.queue_panel.set_status_handler(self._set_status)
+
+        knowledge_tab = self.main_tabs.tab("Conhecimento")
+        knowledge_tab.grid_columnconfigure(0, weight=1)
+        knowledge_tab.grid_rowconfigure(0, weight=1)
+
+        self.workspace_panel = KnowledgeWorkspacePanel(
+            knowledge_tab,
+            self.settings,
+            self.theme,
+            on_status=self._set_status,
+            on_show_related=self._on_library_show_related,
+        )
+        self.workspace_panel.grid(row=0, column=0, sticky="nsew")
 
         library_tab = self.main_tabs.tab("Biblioteca")
         library_tab.grid_columnconfigure(0, weight=1)
@@ -126,8 +141,12 @@ class MainWindow:
             self.theme,
             on_status=self._set_status,
             on_show_related=self._on_library_show_related,
+            on_open_workspace=self._on_open_in_workspace,
         )
         self.library_panel.grid(row=0, column=0, sticky="nsew")
+
+        self._wrap_tab_persistence()
+        self._restore_last_tab()
 
         study_tab = self.main_tabs.tab("Estudo")
         study_tab.grid_columnconfigure(0, weight=1)
@@ -256,6 +275,7 @@ class MainWindow:
         self.status_label.configure(text_color=colors["accent"])
         self.settings_panel.refresh_theme()
         self.queue_panel.refresh_theme()
+        self.workspace_panel.refresh_theme()
         self.library_panel.refresh_theme()
         self.graph_panel.refresh_theme()
         self.study_panel.refresh_theme()
@@ -311,6 +331,7 @@ class MainWindow:
         if job.status == JobStatus.COMPLETED:
             self.settings_panel.refresh_history()
             self.library_panel.refresh()
+            self.workspace_panel.refresh()
             self.graph_panel.refresh()
 
     def _on_queue_idle(self) -> None:
@@ -320,7 +341,36 @@ class MainWindow:
         )
         self.settings_panel.refresh_history()
         self.library_panel.refresh()
+        self.workspace_panel.refresh()
         self.graph_panel.refresh()
+
+    def _wrap_tab_persistence(self) -> None:
+        seg = self.main_tabs._segmented_button
+        previous = seg.cget("command")
+
+        def on_tab(value: str) -> None:
+            if previous:
+                previous(value)
+            try:
+                self.settings.ui_last_tab = self.main_tabs.get()
+            except Exception:
+                pass
+
+        seg.configure(command=on_tab)
+
+    def _restore_last_tab(self) -> None:
+        tab = self.settings.ui_last_tab
+        valid = ("Pipeline", "Conhecimento", "Biblioteca", "Grafo / Conexões", "Estudo")
+        if tab in valid:
+            try:
+                self.main_tabs.set(tab)
+            except ValueError:
+                pass
+
+    def _on_open_in_workspace(self, catalog_id: str) -> None:
+        self.main_tabs.set("Conhecimento")
+        self.workspace_panel.focus_catalog(catalog_id)
+        self._set_status("Documento aberto no workspace.")
 
     def _on_library_show_related(self, catalog_id: str, title: str) -> None:
         self.main_tabs.set("Grafo / Conexões")
