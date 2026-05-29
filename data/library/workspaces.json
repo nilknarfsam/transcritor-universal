@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "items": {
+    "ws-default": {
+      "id": "ws-default",
+      "name": "Biblioteca Principal",
+      "description": "Workspace padrão do CortexFlow",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    },
+    "ws-renascer": {
+      "id": "ws-renascer",
+      "name": "Instituto Renascer",
+      "description": "",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    },
+    "ws-estudos-ga": {
+      "id": "ws-estudos-ga",
+      "name": "Estudos GA",
+      "description": "",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    },
+    "ws-ict": {
+      "id": "ws-ict",
+      "name": "Engenharia ICT",
+      "description": "",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    },
+    "ws-franklin": {
+      "id": "ws-franklin",
+      "name": "Biblioteca Franklin",
+      "description": "",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    },
+    "ws-cursos": {
+      "id": "ws-cursos",
+      "name": "Cursos Online",
+      "description": "",
+      "collection_ids": [],
+      "metadata": {},
+      "created_at": "2026-05-29T15:04:58.352765+00:00",
+      "updated_at": "2026-05-29T15:04:58.352765+00:00"
+    }
+  }
+}

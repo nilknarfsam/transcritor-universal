@@ -1,0 +1,29 @@
+{
+  "theme": "System",
+  "language": "auto",
+  "output_folder": "",
+  "default_export_format": "md",
+  "export_mode": "raw",
+  "content_template": "generic",
+  "whisper_model": "base",
+  "max_history": 10,
+  "workspace_id": "ws-default",
+  "collection_id": "",
+  "collection_name": "",
+  "library_author": "",
+  "library_speaker": "",
+  "library_category": "",
+  "library_tags": "",
+  "knowledge_type": "document",
+  "ui_last_tab": "Transcrição",
+  "ui_last_search_query": "",
+  "ui_search_filter_workspace": "(todos)",
+  "ui_search_filter_collection": "(todas)",
+  "ui_search_filter_node_type": "(todos)",
+  "ui_search_filter_template": "(todos)",
+  "ui_search_filter_export_mode": "(todos)",
+  "ui_search_filter_difficulty": "(todos)",
+  "features": {
+    "knowledge_pipeline": false
+  }
+}

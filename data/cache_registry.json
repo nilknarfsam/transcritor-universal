@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "entries": {
+    "1b4dacfc38e47fcd2d9480ae4cef65e90772779a4a1d5acb8a8c914801eb988e": {
+      "hash": "1b4dacfc38e47fcd2d9480ae4cef65e90772779a4a1d5acb8a8c914801eb988e",
+      "file_name": "Aula 01 - Introdução à Teologia - Curso Básico - 1920x1080 4011K.mp4",
+      "size_bytes": 136753707,
+      "processed_at": "2026-05-29T15:04:58.481393+00:00",
+      "export_mode": "raw",
+      "template": "generic",
+      "language": "auto",
+      "pipeline_stage": "whisper",
+      "paths": {
+        "whisper": "C:\\src\\projects\\transcritor-universal\\data\\cache\\1b4dacfc38e47fcd2d9480ae4cef65e90772779a4a1d5acb8a8c914801eb988e\\whisper.txt"
+      }
+    },
+    "6d369ee55dd851f13e8ee9b1b6afec1ba44c2f44d71c2eaf7d642d28c9262323": {
+      "hash": "6d369ee55dd851f13e8ee9b1b6afec1ba44c2f44d71c2eaf7d642d28c9262323",
+      "file_name": "Aula 02 - Introdução à Teologia - Curso Básico - 1920x1080 4144K.mp4",
+      "size_bytes": 118023580,
+      "processed_at": "2026-05-29T20:05:27.046305+00:00",
+      "export_mode": "raw",
+      "template": "generic",
+      "language": "auto",
+      "pipeline_stage": "whisper",
+      "paths": {
+        "whisper": "C:\\src\\projects\\transcritor-universal\\data\\cache\\6d369ee55dd851f13e8ee9b1b6afec1ba44c2f44d71c2eaf7d642d28c9262323\\whisper.txt"
+      }
+    },
+    "457dde7e297fc2526c5f64cf18dbdaa1c7c0cab4e0c4fe0ed5769e8746644675": {
+      "hash": "457dde7e297fc2526c5f64cf18dbdaa1c7c0cab4e0c4fe0ed5769e8746644675",
+      "file_name": "Aula 03 - Introdução à Teologia - Curso Básico - 1920x1080 4316K.mp4",
+      "size_bytes": 129233962,
+      "processed_at": "2026-05-29T20:06:31.085943+00:00",
+      "export_mode": "raw",
+      "template": "generic",
+      "language": "auto",
+      "pipeline_stage": "whisper",
+      "paths": {
+        "whisper": "C:\\src\\projects\\transcritor-universal\\data\\cache\\457dde7e297fc2526c5f64cf18dbdaa1c7c0cab4e0c4fe0ed5769e8746644675\\whisper.txt"
+      }
+    }
+  }
+}

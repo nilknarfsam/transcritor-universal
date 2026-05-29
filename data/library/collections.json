@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "items": {
+    "col-teologia-2e159e": {
+      "id": "col-teologia-2e159e",
+      "name": "Teologia",
+      "description": "Coleção padrão: Teologia",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.347713+00:00",
+      "updated_at": "2026-05-29T15:04:58.347713+00:00"
+    },
+    "col-engenharia-20aaf7": {
+      "id": "col-engenharia-20aaf7",
+      "name": "Engenharia",
+      "description": "Coleção padrão: Engenharia",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.348238+00:00",
+      "updated_at": "2026-05-29T15:04:58.348238+00:00"
+    },
+    "col-podcasts-8ea93e": {
+      "id": "col-podcasts-8ea93e",
+      "name": "Podcasts",
+      "description": "Coleção padrão: Podcasts",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.348238+00:00",
+      "updated_at": "2026-05-29T15:04:58.348238+00:00"
+    },
+    "col-reuniões-9f47de": {
+      "id": "col-reuniões-9f47de",
+      "name": "Reuniões",
+      "description": "Coleção padrão: Reuniões",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.349382+00:00",
+      "updated_at": "2026-05-29T15:04:58.349382+00:00"
+    },
+    "col-cursos-304e1c": {
+      "id": "col-cursos-304e1c",
+      "name": "Cursos",
+      "description": "Coleção padrão: Cursos",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.349382+00:00",
+      "updated_at": "2026-05-29T15:04:58.349382+00:00"
+    },
+    "col-devocionais-dfd659": {
+      "id": "col-devocionais-dfd659",
+      "name": "Devocionais",
+      "description": "Coleção padrão: Devocionais",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.349382+00:00",
+      "updated_at": "2026-05-29T15:04:58.349382+00:00"
+    },
+    "col-estudos-8f207b": {
+      "id": "col-estudos-8f207b",
+      "name": "Estudos",
+      "description": "Coleção padrão: Estudos",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.349382+00:00",
+      "updated_at": "2026-05-29T15:04:58.349382+00:00"
+    },
+    "col-pesquisas-7d7b2b": {
+      "id": "col-pesquisas-7d7b2b",
+      "name": "Pesquisas",
+      "description": "Coleção padrão: Pesquisas",
+      "tags": [],
+      "workspace_ids": [],
+      "created_at": "2026-05-29T15:04:58.349382+00:00",
+      "updated_at": "2026-05-29T15:04:58.349382+00:00"
+    }
+  }
+}
