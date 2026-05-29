@@ -45,6 +45,8 @@ STATUS = {
     "completed": ("#2E9B6A", "#3DB87A"),
     "error": ("#D64545", "#FF6B6B"),
     "cancelled": ("#D4822A", "#FFB347"),
+    "cache_hit": ("#2E9B6A", "#3DB87A"),
+    "cache_miss": ("#9A5F18", "#FFB347"),
 }
 
 SEMANTIC = {

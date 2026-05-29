@@ -5,5 +5,15 @@ from src.ui.components.knowledge_widgets import (
     StatCard,
     TypeBadge,
 )
+from src.ui.components.queue_widgets import JobDetailsPanel, QueueEmptyState, StatusBadge
 
-__all__ = ["EmptyState", "ResultCard", "SectionHeader", "StatCard", "TypeBadge"]
+__all__ = [
+    "EmptyState",
+    "JobDetailsPanel",
+    "QueueEmptyState",
+    "ResultCard",
+    "SectionHeader",
+    "StatCard",
+    "StatusBadge",
+    "TypeBadge",
+]
