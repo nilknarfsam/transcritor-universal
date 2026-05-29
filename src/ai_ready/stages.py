@@ -12,10 +12,11 @@ class ContentStage(str, Enum):
     CLEAN = "clean"
     AI_READY = "ai_ready"
     SEMANTIC = "semantic"
+    STUDY = "study"
     NOTEBOOKLM = "notebooklm"
 
 
-EXPORT_MODES = ("raw", "clean", "ai_ready", "notebooklm")
+EXPORT_MODES = ("raw", "clean", "ai_ready", "notebooklm", "study_mode")
 CONTENT_TEMPLATES = ("generic", "sermon", "podcast", "course")
 
 

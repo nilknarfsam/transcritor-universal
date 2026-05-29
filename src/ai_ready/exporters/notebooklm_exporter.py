@@ -1,4 +1,4 @@
-"""Exportador NotebookLM — pipeline RAW → CLEAN → AI_READY → SEMANTIC → NOTEBOOKLM."""
+"""Exportador NotebookLM — RAW → … → SEMANTIC → STUDY → NOTEBOOKLM (study_mode)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from src.ai_ready.templates import TEMPLATE_RENDERERS, TemplateContext
 from src.semantic.semantic_engine import SemanticEngine, SemanticResult
 
 
-ExportMode = str  # raw | clean | ai_ready | notebooklm
+ExportMode = str  # raw | clean | ai_ready | notebooklm | study_mode
 
 
 @dataclass
@@ -52,6 +52,8 @@ class NotebookLMExporter:
             return self._ai_ready(text, ctx)
         if mode == "notebooklm":
             return self._notebooklm(text, ctx)
+        if mode == "study_mode":
+            return self._study_mode(text, ctx)
         return self._raw(text, ctx)
 
     def export_text(self, text: str, ctx: ExportContext) -> str:
@@ -106,18 +108,60 @@ class NotebookLMExporter:
     def _notebooklm(self, text: str, ctx: ExportContext) -> StageResult:
         ai_ready = self._ai_ready(text, ctx)
         semantic = self._apply_semantic(text, ctx, ai_ready)
+        return self._finalize_notebooklm(ctx, semantic)
 
-        meta_builder = self._metadata_builder(ctx, ContentStage.NOTEBOOKLM, semantic.metadata)
-        if semantic.metadata.get("topics"):
-            meta_builder.topics = list(semantic.metadata["topics"])
-        if semantic.metadata.get("tags"):
-            meta_builder.tags = list(semantic.metadata["tags"])
+    def _study_mode(self, text: str, ctx: ExportContext) -> StageResult:
+        ai_ready = self._ai_ready(text, ctx)
+        semantic = self._apply_semantic(text, ctx, ai_ready)
+        studied = self._apply_study(text, ctx, semantic)
+        return self._finalize_notebooklm(ctx, studied, export_mode_label="study_mode")
+
+    def _apply_study(self, text: str, ctx: ExportContext, semantic: StageResult) -> StageResult:
+        from src.study.study_engine import StudyEngine
+
+        title = self._title(ctx)
+        engine = StudyEngine()
+        study = engine.build(
+            text,
+            title=title,
+            content_template=ctx.content_template,
+            semantic_metadata=semantic.metadata,
+            chunks=semantic.metadata.get("chunks"),
+            topics=semantic.metadata.get("topics"),
+        )
+        body = f"{semantic.content.strip()}\n\n{study.markdown_sections.strip()}"
+        meta = {**semantic.metadata, **study.to_metadata()}
+        meta["study_package"] = study.to_package()
+        meta["pipeline_stage"] = "study_mode"
+        return StageResult(stage=ContentStage.STUDY, content=body.strip(), metadata=meta)
+
+    def _finalize_notebooklm(
+        self,
+        ctx: ExportContext,
+        stage: StageResult,
+        *,
+        export_mode_label: str = "notebooklm",
+    ) -> StageResult:
+        extra = dict(stage.metadata)
+        meta_builder = self._metadata_builder(ctx, ContentStage.NOTEBOOKLM, extra)
+        if extra.get("topics"):
+            meta_builder.topics = list(extra["topics"])
+        if extra.get("tags"):
+            meta_builder.tags = list(extra["tags"])
+        if extra.get("difficulty"):
+            meta_builder.difficulty = str(extra["difficulty"])
+        if extra.get("semantic_score"):
+            meta_builder.semantic_score = float(extra["semantic_score"])
+        if extra.get("chunk_count"):
+            meta_builder.chunk_count = int(extra["chunk_count"])
 
         yaml_block = build_metadata_yaml(meta_builder)
-        content = f"{yaml_block}\n\n{semantic.content}"
+        content = f"{yaml_block}\n\n{stage.content}"
         meta = self._base_metadata(ctx, ContentStage.NOTEBOOKLM)
         meta["template"] = ctx.content_template
-        meta.update(semantic.metadata)
+        meta.update(extra)
+        meta["export_mode"] = export_mode_label
+        meta["pipeline_stage"] = export_mode_label
         return StageResult(stage=ContentStage.NOTEBOOKLM, content=content.strip(), metadata=meta)
 
     def analyze_semantic(self, text: str, ctx: ExportContext | None = None) -> SemanticResult:
@@ -183,6 +227,8 @@ class NotebookLMExporter:
                 builder.semantic_score = float(extra["semantic_score"])
             if extra.get("chunk_count"):
                 builder.chunk_count = int(extra["chunk_count"])
+            if extra.get("difficulty"):
+                builder.difficulty = str(extra["difficulty"])
         return builder
 
     def _base_metadata(self, ctx: ExportContext, stage: ContentStage) -> dict[str, Any]:
