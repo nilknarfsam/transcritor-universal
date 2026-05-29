@@ -8,6 +8,24 @@ Transforme conteúdos brutos (áudio, vídeo, documentos, OCR) em Markdown e for
 
 ---
 
+## UX 3.0.2 — Aba Transcrição
+
+A aba **Transcrição** é a tela principal do CortexFlow (primeira aba ao abrir o app).
+
+### Nova fila premium
+
+* **Toolbar:** Adicionar arquivos, Adicionar pasta, Remover selecionado, Limpar fila
+* **Tabela:** Arquivo, Tipo, Status, Progresso, Saída, Tempo
+* **Estado vazio:** mensagem + formatos aceitos (áudio, vídeo, PDF, DOCX, XLSX, imagens, TXT)
+* **Detalhes** do item selecionado (caminhos, cache HIT/MISS, modo de exportação, tipo de conteúdo)
+* **Ações:** Iniciar transcrição (botão principal), Cancelar, Abrir pasta de saída
+* **Preview** do resultado como painel secundário (exportar TXT, JSON, MD)
+* **Drag and drop** em toda a janela e na fila
+
+Preferências de tema, idioma e biblioteca ficam na aba **Configurações**. Sidebar: marca CortexFlow, versão e slogan.
+
+---
+
 ## Recursos
 
 * **Transcrição (Whisper):** MP3, WAV, M4A, FLAC, MP4, AVI, MOV, MKV
@@ -592,7 +610,7 @@ A aba **Conhecimento** é o hub central para navegar tudo que já foi processado
 
 ### Fluxo natural
 
-1. Processe arquivos na fila (**Pipeline**).
+1. Processe arquivos na aba **Transcrição**.
 2. O catálogo e o grafo atualizam automaticamente.
 3. Abra **Conhecimento** e use a **busca unificada**.
 4. Selecione um card de resultado.

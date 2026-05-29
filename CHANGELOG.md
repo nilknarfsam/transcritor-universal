@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.0.2] - 2026-05-28
+
+### UX 3.0.2 — Aba Transcrição
+
+- **Nova fila premium** na aba **Transcrição**: toolbar (arquivos, pasta, remover, limpar), tabela com colunas Arquivo, Tipo, Status, Progresso, Saída e Tempo.
+- **Estado vazio** com mensagem orientativa e formatos aceitos (áudio, vídeo, PDF, DOCX, XLSX, imagens, TXT).
+- **Painel de detalhes** do item selecionado (caminhos, status, cache, tempo, modo e template).
+- **Badges padronizados** para aguardando, processando, concluído, erro, cancelado, cache hit e cache miss.
+- **Ações principais:** Iniciar transcrição (destaque), Cancelar e Abrir pasta de saída; proporção 7:3 entre fila e preview.
+- **Adicionar pasta** via diálogo (arquivos suportados recursivos) sem alterar `QueueManager`.
+- Funções secundárias preservadas: restaurar fila, limpar cache, drag and drop, exportações do preview.
+
 ## [2.9.0] - 2026-05-28
 
 ### Added
