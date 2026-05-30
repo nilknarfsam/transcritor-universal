@@ -85,6 +85,17 @@
 - [x] Reforço de `hiddenimports`: `tiktoken`, `torchaudio`, `whisper`, `torch` (lista explícita no Analysis).
 - [x] **Release:** `console=False` — build final sem janela de terminal.
 
+### Empacotamento Standalone (Portátil) — Fase 3.1 · Preparação estrutural
+
+> Objetivo: distribuição autossuficiente com FFmpeg/Tesseract embutidos (sem instalação no Windows).
+> Complementa as fases de build desktop (3.1–3.3 acima, trilha PyInstaller).
+
+- [x] Diretório `bin/` na raiz do repo (placeholder `bin/README.md` para versionamento Git).
+- [x] `inject_local_binaries_to_path()` em `app.py` — injeta `bin/` no `PATH` antes de imports pesados (`sys._MEIPASS` / dev).
+- [x] `app_transcricao.spec` — `datas` inclui pasta `bin/` e conteúdo no build.
+- [ ] Copiar `ffmpeg.exe`, `tesseract.exe` e DLLs para `bin/`.
+- [ ] Validar transcrição e OCR usando apenas binários locais (sem PATH do sistema).
+
 ### Sprint UX 3.1 — Simplificação Radical da Interface
 
 - [x] Remover sidebar (`BrandSidebar`) e header de marca da tela principal.
@@ -128,6 +139,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-30 | Standalone 3.1 — prep bin/ + PATH | `bin/`, `inject_local_binaries_to_path()` em `app.py`, `datas` no spec; commit local. |
 | 2026-05-30 | Fase 3.3 — Release onedir (sem console) | `console=False` no spec; rebuild `dist/CortexFlow/`; commit local. |
 | 2026-05-30 | Fase 3.3 — Build one-directory + debug | Spec onedir + `COLLECT`, `console=True`, hiddenimports Whisper; `dist/CortexFlow/`; commit local. |
 | 2026-05-30 | Fase 3.1/3.2 — Build Desktop | `app_transcricao.spec` (CTk + dnd2, sem `data/`); paths congelados em `settings_service`; `dist/CortexFlow.exe`; commits locais. |
