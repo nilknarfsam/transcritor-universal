@@ -20,6 +20,11 @@ project_root = Path(SPECPATH)
 # Assets de UI — CustomTkinter (temas/fontes) e tkinterdnd2 (tkdnd + DLLs)
 datas = collect_data_files("customtkinter") + collect_data_files("tkinterdnd2")
 
+# Binários externos embutidos (FFmpeg, Tesseract) — Standalone / Portátil
+_bin_dir = project_root / "bin"
+if _bin_dir.is_dir():
+    datas.append((str(_bin_dir), "bin"))
+
 # Whisper / PyTorch — imports explícitos para evitar falhas silenciosas no onedir
 _whisper_torch = ["tiktoken", "torchaudio", "whisper", "torch"]
 
