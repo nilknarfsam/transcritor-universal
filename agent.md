@@ -69,6 +69,14 @@
 - [ ] Contratos `Protocol` para `TranscriptionEngine`, `TextExtractor`, estágios de export (opcional / fase posterior).
 - [ ] Testes adicionais: `export_service`, `job_errors`, cache lookup, serialização da fila.
 
+### Fase 3.1 / 3.2 — Empacotamento e Build Desktop (CortexFlow.exe)
+
+- [x] `app_transcricao.spec` — CustomTkinter + tkinterdnd2 via `collect_data_files`; hiddenimports para `src`, Whisper/torch e dependências de documentos.
+- [x] Pasta `data/` **não** empacotada — runtime cria `<pasta_do_exe>/data/` na primeira execução (`settings_service._resolve_data_dir`).
+- [x] `multiprocessing.freeze_support()` em `app.py` (Windows / PyInstaller).
+- [x] Build: `pyinstaller app_transcricao.spec --clean --noconfirm` → `dist/CortexFlow.exe`.
+- [x] `requirements-build.txt` com PyInstaller.
+
 ### Sprint UX 3.1 — Simplificação Radical da Interface
 
 - [x] Remover sidebar (`BrandSidebar`) e header de marca da tela principal.
@@ -91,6 +99,7 @@
 
 ### Fase 4 — Tooling e empacotamento (prioridade média)
 
+- [x] Build desktop one-file (`dist/CortexFlow.exe`) — ver Fase 3.1 / 3.2.
 - `pyproject.toml` + lockfile (uv/poetry).
 - CI mínimo (lint + testes).
 - Limpar artefatos na raiz do repo (ffmpeg/tesseract zip, histórico legado duplicado).
@@ -111,6 +120,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-30 | Fase 3.1/3.2 — Build Desktop | `app_transcricao.spec` (CTk + dnd2, sem `data/`); paths congelados em `settings_service`; `dist/CortexFlow.exe`; commits locais. |
 | 2026-05-29 | README profissional 3.0.4 | `README.md` reescrito (features, pré-requisitos, instalação, stack); commit `docs: criar README profissional para o CortexFlow 3.0.4`. |
 | 2026-05-29 | Fase 5 — timestamps e progresso Whisper | `format_segments_to_text`, `whisper_progress.py` (tqdm/stderr), job 5%→90%; testes; commit `feat: formatar transcricao com timestamps e capturar progresso real do whisper`. |
 | 2026-05-29 | Sprint Qualidade — PEP 8, docs, bug hunt | Varredura `core/` + `ui/`; `RLock` na fila; `unload_model()`; PIL/XLSX/TXT; `docs/CODE_REVIEW_REPORT.md`; 3 commits locais. |
