@@ -28,10 +28,14 @@ class TestTranscriptionFormatting(unittest.TestCase):
             {"start": 70.0, "text": " Segundo bloco aqui."},
         ]
         text = format_segments_to_text(segments, block_seconds=60)
-        self.assertIn("**[00:00]** Olá, meus queridos alunos. Hoje falaremos de teologia.", text)
-        self.assertIn("**[00:45]** A teologia descobre fatos.", text)
+        self.assertIn(
+            "**[00:00]** Olá, meus queridos alunos. Hoje falaremos de teologia. "
+            "A teologia descobre fatos.",
+            text,
+        )
         self.assertIn("**[01:10]** Segundo bloco aqui.", text)
-        self.assertEqual(text.count("\n\n"), 2)
+        self.assertNotIn("**[00:45]**", text)
+        self.assertEqual(text.count("\n\n"), 1)
 
     def test_format_segments_empty(self) -> None:
         self.assertEqual(format_segments_to_text([]), "")
