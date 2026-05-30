@@ -25,6 +25,13 @@ _bin_dir = project_root / "bin"
 if _bin_dir.is_dir():
     datas.append((str(_bin_dir), "bin"))
 
+# Branding — ícone da janela e assets empacotados
+_assets_dir = project_root / "assets"
+if _assets_dir.is_dir():
+    datas.append((str(_assets_dir), "assets"))
+
+_icon_file = project_root / "assets" / "icon.ico"
+
 # Whisper / PyTorch — imports explícitos para evitar falhas silenciosas no onedir
 _whisper_torch = ["tiktoken", "torchaudio", "whisper", "torch"]
 
@@ -95,6 +102,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(_icon_file) if _icon_file.is_file() else None,
 )
 
 coll = COLLECT(

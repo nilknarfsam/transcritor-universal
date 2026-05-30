@@ -148,6 +148,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-30 | Branding — ícone CortexFlow | `assets/icon.png` + `icon.ico`; `create_icon.py`; spec + `main_window.iconphoto`; build release. |
 | 2026-05-30 | Fase 3.1 — Binários + release standalone | FFmpeg/ffprobe copiados (WinGet); `scripts/copy_local_binaries.ps1`; build `dist/CortexFlow/`; Tesseract ausente. |
 | 2026-05-30 | Fase 3.4 — Faxina raiz + diagnóstico core | `_archive/` (10 artefatos); validação extensão/`MAX_PATH`; logging em exceções engolidas; commits locais. |
 | 2026-05-30 | Standalone 3.1 — prep bin/ + PATH | `bin/`, `inject_local_binaries_to_path()` em `app.py`, `datas` no spec; commit local. |

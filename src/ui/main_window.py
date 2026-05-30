@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
 import traceback
+from pathlib import Path
 from typing import Callable
 
 import customtkinter as ctk
@@ -44,7 +46,9 @@ class MainWindow:
         self.root.title(f"{APP_NAME} {APP_VERSION}")
         self.root.geometry("1280x740")
         self.root.minsize(1000, 620)
+        self._window_icon: tk.PhotoImage | None = None
         self._apply_root_background()
+        self._apply_window_icon()
 
         self.queue_manager = QueueManager(
             self.settings,
@@ -86,6 +90,36 @@ class MainWindow:
     def _apply_root_background(self) -> None:
         """TkinterDnD.Tk() usa bg nativo — fg_color é exclusivo do CTk."""
         self.root.configure(bg=self.theme.colors()["surface"])
+
+    def _resolve_asset_path(self, name: str) -> Path | None:
+        import sys
+
+        candidates: list[Path] = []
+        if getattr(sys, "frozen", False):
+            base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+            candidates.extend(
+                [
+                    base / "assets" / name,
+                    Path(sys.executable).resolve().parent / "assets" / name,
+                    Path(sys.executable).resolve().parent / "_internal" / "assets" / name,
+                ]
+            )
+        else:
+            candidates.append(Path(__file__).resolve().parents[2] / "assets" / name)
+        for path in candidates:
+            if path.is_file():
+                return path
+        return None
+
+    def _apply_window_icon(self) -> None:
+        icon_path = self._resolve_asset_path("icon.png")
+        if not icon_path:
+            return
+        try:
+            self._window_icon = tk.PhotoImage(file=str(icon_path))
+            self.root.iconphoto(True, self._window_icon)
+        except tk.TclError as exc:
+            self._logger.warning("Não foi possível carregar ícone da janela: %s", exc)
 
     def _build_layout(self) -> None:
         self.root.grid_columnconfigure(0, weight=1)
