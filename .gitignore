@@ -11,3 +11,4 @@ build/
 .DS_Store
 data/logs/*.log
 data/logs/*.log.*
+_archive/
