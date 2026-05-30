@@ -74,8 +74,16 @@
 - [x] `app_transcricao.spec` — CustomTkinter + tkinterdnd2 via `collect_data_files`; hiddenimports para `src`, Whisper/torch e dependências de documentos.
 - [x] Pasta `data/` **não** empacotada — runtime cria `<pasta_do_exe>/data/` na primeira execução (`settings_service._resolve_data_dir`).
 - [x] `multiprocessing.freeze_support()` em `app.py` (Windows / PyInstaller).
-- [x] Build: `pyinstaller app_transcricao.spec --clean --noconfirm` → `dist/CortexFlow.exe`.
+- [x] Build inicial one-file: `dist/CortexFlow.exe` (~219 MB; boot lento por extração).
 - [x] `requirements-build.txt` com PyInstaller.
+
+### Fase 3.3 — Otimização de Build (One Directory) e Debugging
+
+- [x] `app_transcricao.spec` migrado para **one-directory** (`exclude_binaries=True` + bloco `COLLECT`).
+- [x] Saída: `dist/CortexFlow/CortexFlow.exe` (+ `_internal/` com libs/DLLs) — boot mais rápido, sem extração one-file.
+- [x] `console=True` temporário no EXE para capturar erros de Whisper/PyTorch no terminal.
+- [x] Reforço de `hiddenimports`: `tiktoken`, `torchaudio`, `whisper`, `torch` (lista explícita no Analysis).
+- [ ] Após corrigir transcrição no build: voltar `console=False` para release.
 
 ### Sprint UX 3.1 — Simplificação Radical da Interface
 
@@ -99,7 +107,7 @@
 
 ### Fase 4 — Tooling e empacotamento (prioridade média)
 
-- [x] Build desktop one-file (`dist/CortexFlow.exe`) — ver Fase 3.1 / 3.2.
+- [x] Build desktop one-directory (`dist/CortexFlow/`) — ver Fase 3.3 (substitui one-file da 3.2).
 - `pyproject.toml` + lockfile (uv/poetry).
 - CI mínimo (lint + testes).
 - Limpar artefatos na raiz do repo (ffmpeg/tesseract zip, histórico legado duplicado).
@@ -120,6 +128,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-30 | Fase 3.3 — Build one-directory + debug | Spec onedir + `COLLECT`, `console=True`, hiddenimports Whisper; `dist/CortexFlow/`; commit local. |
 | 2026-05-30 | Fase 3.1/3.2 — Build Desktop | `app_transcricao.spec` (CTk + dnd2, sem `data/`); paths congelados em `settings_service`; `dist/CortexFlow.exe`; commits locais. |
 | 2026-05-29 | README profissional 3.0.4 | `README.md` reescrito (features, pré-requisitos, instalação, stack); commit `docs: criar README profissional para o CortexFlow 3.0.4`. |
 | 2026-05-29 | Fase 5 — timestamps e progresso Whisper | `format_segments_to_text`, `whisper_progress.py` (tqdm/stderr), job 5%→90%; testes; commit `feat: formatar transcricao com timestamps e capturar progresso real do whisper`. |
