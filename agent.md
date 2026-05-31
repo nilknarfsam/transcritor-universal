@@ -98,6 +98,13 @@
 - [x] Build release standalone one-directory (`dist/CortexFlow/`, `console=False`) com binários locais embutidos.
 - [x] **Fase 3.1 concluída** — distribuição portátil autossuficiente para áudio/vídeo (FFmpeg embutido). OCR de imagens: incluir `tesseract.exe` + `tessdata/` quando disponível no sistema de build.
 
+### Fase 3.5 — Hotfix de Subprocessos no Windows (PyInstaller)
+
+- [x] Monkey-patch de `subprocess.Popen` em `app.py` — `CREATE_NO_WINDOW` (0x08000000) em todo spawn no Windows.
+- [x] Build congelado (`sys.frozen`): redireciona `stdin`/`stdout`/`stderr` para evitar crash de FFmpeg/Tesseract sem console.
+- [x] `inject_local_binaries_to_path()` — prepend absoluto de `bin/` / `_internal/bin/` no `PATH`.
+- [x] Rebuild release one-directory (`dist/CortexFlow/`, `console=False`).
+
 ### Fase 3.4 — Faxina na Raiz e Diagnóstico Profundo
 
 - [x] Pasta `_archive/` na raiz (gitignored) — artefatos legados fora do build de produção.
@@ -148,6 +155,7 @@ Registro cronológico (mais recente no topo).
 
 | Data | Tarefa | Resultado |
 |------|--------|-----------|
+| 2026-05-30 | Fase 3.5 — Hotfix subprocess Windows | Monkey-patch `Popen` + PATH prepend absoluto; rebuild release; commit local. |
 | 2026-05-30 | Branding — ícone CortexFlow | `assets/icon.png` + `icon.ico`; `create_icon.py`; spec + `main_window.iconphoto`; build release. |
 | 2026-05-30 | Fase 3.1 — Binários + release standalone | FFmpeg/ffprobe copiados (WinGet); `scripts/copy_local_binaries.ps1`; build `dist/CortexFlow/`; Tesseract ausente. |
 | 2026-05-30 | Fase 3.4 — Faxina raiz + diagnóstico core | `_archive/` (10 artefatos); validação extensão/`MAX_PATH`; logging em exceções engolidas; commits locais. |

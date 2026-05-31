@@ -4,8 +4,37 @@ from __future__ import annotations
 
 import multiprocessing
 import os
+import subprocess
 import sys
 from pathlib import Path
+
+
+def _patch_subprocess_for_windows_windowless() -> None:
+    """
+    Evita janelas CMD piscando e crash de FFmpeg/Tesseract em build windowless.
+
+    Deve rodar antes de imports que invocam subprocess (Whisper, ffmpeg, etc.).
+    """
+    if sys.platform != "win32":
+        return
+
+    _CREATE_NO_WINDOW = 0x08000000
+    _original_popen = subprocess.Popen
+
+    class _Popen(_original_popen):
+        def __init__(self, *args, **kwargs):
+            if "creationflags" not in kwargs:
+                kwargs["creationflags"] = _CREATE_NO_WINDOW
+            if getattr(sys, "frozen", False):
+                kwargs["stdin"] = subprocess.DEVNULL
+                kwargs["stdout"] = subprocess.DEVNULL
+                kwargs["stderr"] = subprocess.STDOUT
+            super().__init__(*args, **kwargs)
+
+    subprocess.Popen = _Popen  # type: ignore[misc, assignment]
+
+
+_patch_subprocess_for_windows_windowless()
 
 
 def inject_local_binaries_to_path() -> None:
@@ -28,9 +57,7 @@ def inject_local_binaries_to_path() -> None:
         if not bin_dir.is_dir():
             continue
         path_entry = str(bin_dir.resolve())
-        current = os.environ.get("PATH", "")
-        if path_entry not in current.split(os.pathsep):
-            os.environ["PATH"] = path_entry + os.pathsep + current
+        os.environ["PATH"] = path_entry + os.pathsep + os.environ.get("PATH", "")
         break
 
 
